@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import subprocess
 import os
 import requests
@@ -108,9 +109,12 @@ def get_old_instances(region: str):
         result = subprocess.run(
             cmd, capture_output=True, text=True, check=True)
         instances = json.loads(result.stdout)
-        instance_ids = [inst[0]
-                        for reservation in instances for inst in reservation if inst]
-        return instance_ids
+        return [
+            inst[0]
+            for reservation in instances
+            for inst in reservation
+            if inst
+        ]
     except subprocess.CalledProcessError as e:
         print(f"❌ Error fetching instances in {region}: {e}")
         return []
@@ -123,8 +127,7 @@ def check_existing_deployments():
     """
     deployments = {}
     for region in AWS_REGIONS.keys():
-        instance_ids = get_old_instances(region)
-        if instance_ids:
+        if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
                 f"✅ Found running instance(s) in {region} ({friendly_region}): {instance_ids}")
@@ -199,13 +202,11 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
     """
     url = f"http://{ip_address}"
     for attempt in range(1, max_attempts + 1):
-        try:
+        with contextlib.suppress(requests.exceptions.RequestException):
             response = requests.get(url, timeout=3)
             if response.status_code == 200:
                 print(f"✅ HTTP check succeeded for {url}")
                 return True
-        except requests.exceptions.RequestException:
-            pass
         print(
             f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
         time.sleep(interval)
@@ -273,27 +274,22 @@ def deploy():
     # CASE 1: No existing deployment
     if not deployments:
         print("\nℹ️  No instance deployed yet.")
-        user_input = input(
-            f"Do you want to deploy in {best_region} ({best_friendly})? (yes/no): ").strip().lower()
-        if user_input != "yes":
+        if (user_input := input(
+                f"Do you want to deploy in {best_region} ({best_friendly})? (yes/no): ").strip().lower()) != "yes":
             print("❌ Deployment aborted.")
             return
 
         update_tfvars(best_region)
         run_terraform()
 
-        instance_ip = get_terraform_output("instance_public_ip")
-        if instance_ip:
+        if instance_ip := get_terraform_output("instance_public_ip"):
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}")
             if wait_for_http_ok(instance_ip, 80):
                 print(
                     f"✅ Deployment complete! New instance at: http://{instance_ip}")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(instance_ip, MYAPP_DOMAIN,
-                                      HOSTED_ZONE_ID, DNS_TTL)
-                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
-                    time.sleep(DNS_TTL)
+                    _extracted_from_deploy_(instance_ip)
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -324,19 +320,14 @@ def deploy():
         update_tfvars(best_region)
         run_terraform()
 
-        instance_ip = get_terraform_output("instance_public_ip")
-        if instance_ip:
+        if instance_ip := get_terraform_output("instance_public_ip"):
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}")
             if wait_for_http_ok(instance_ip, 80):
                 print(
                     f"✅ Redeployment complete! New instance at: http://{instance_ip}")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(instance_ip, MYAPP_DOMAIN,
-                                      HOSTED_ZONE_ID, DNS_TTL)
-                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
-                    time.sleep(DNS_TTL)
-
+                    _extracted_from_deploy_(instance_ip)
                 # Terminate old instance(s)
                 for region, instance_ids in deployments.items():
                     if region != best_region:
@@ -349,6 +340,14 @@ def deploy():
             print("❌ Failed to retrieve instance details. Check Terraform outputs.")
     else:
         print("✅ No change needed - you're already in the greenest region.")
+
+
+# TODO Rename this here and in `deploy`
+def _extracted_from_deploy_(instance_ip):
+    update_dns_record(instance_ip, MYAPP_DOMAIN,
+                      HOSTED_ZONE_ID, DNS_TTL)
+    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
+    time.sleep(DNS_TTL)
 
 
 if __name__ == "__main__":
