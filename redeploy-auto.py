@@ -36,24 +36,25 @@ REGION_FRIENDLY_NAMES = {"eu-west-1": "Ireland",
 # Configure logging
 # -------------------------------------------------------------------
 
-LOG_FILE = "/redeploy.log"
+LOG_FILE = str(Path(__file__).parent / "redeploy.log")
+
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - [Region: %(region)s] - %(message)s",
+    format="%(asctime)s - %(levelname)s - [Region: %(region)s] - %(log_msg)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 
-def log_message(message, region="N/A", level="info"):
+def log_message(msg, region="N/A", level="info"):
     """Log messages with timestamp and AWS region."""
-    log_data = {"region": region, "message": message}
+    log_data = {"region": region,
+                "log_msg": msg}  # ✅ Changed "message" to "log_msg"
 
     if level == "error":
-        logging.error(message, extra=log_data)
+        logging.error(msg, extra=log_data)
     else:
-        logging.info(message, extra=log_data)
-
+        logging.info(msg, extra=log_data)
 # -------------------------------------------------------------------
 # Functions
 # -------------------------------------------------------------------
@@ -121,13 +122,12 @@ def deploy():
     update_tfvars(best_region)
     run_terraform()
 
-    instance_ip = get_terraform_output("instance_public_ip")
-    if instance_ip:
+    if instance_ip := get_terraform_output("instance_public_ip"):
         log_message(
-            f"✅ Deployment completed in {best_region}. Instance at: http://{instance_ip}", region=best_region)
+            f"Deployment completed in {best_region}. Instance at: http://{instance_ip}", region=best_region)
     else:
         log_message(
-            f"❌ Failed to retrieve instance details in {best_region}", region=best_region, level="error")
+            f"Failed to retrieve instance details in {best_region}", region=best_region, level="error")
 
 
 # -------------------------------------------------------------------
