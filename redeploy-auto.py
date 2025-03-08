@@ -31,35 +31,28 @@ AWS_REGIONS = {"eu-west-1": "IE", "eu-west-2": "GB", "eu-central-1": "DE"}
 REGION_FRIENDLY_NAMES = {"eu-west-1": "Ireland",
                          "eu-west-2": "London", "eu-central-1": "Frankfurt"}
 
-# -------------------------------------------------------------------
-# Argument Parsing for Automation Mode
-# -------------------------------------------------------------------
-parser = argparse.ArgumentParser(
-    description="Deploy MyApp to the greenest AWS region.")
-parser.add_argument("--auto", action="store_true",
-                    help="Run in non-interactive mode.")
-args = parser.parse_args()
-
 
 # -------------------------------------------------------------------
 # Configure logging
 # -------------------------------------------------------------------
 
-LOG_FILE = "redeploy.log"
+LOG_FILE = "/redeploy.log"
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(levelname)s - [Region: %(region)s] - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 
-def log_message(message, level="info"):
-    """Log messages with timestamp."""
+def log_message(message, region="N/A", level="info"):
+    """Log messages with timestamp and AWS region."""
+    log_data = {"region": region, "message": message}
+
     if level == "error":
-        logging.error(message)
+        logging.error(message, extra=log_data)
     else:
-        logging.info(message)
+        logging.info(message, extra=log_data)
 
 # -------------------------------------------------------------------
 # Functions
@@ -122,17 +115,19 @@ def deploy():
     """Main deployment logic."""
     best_region = find_best_region()
 
-    print("✅ Running in auto mode. Proceeding with deployment.")
+    log_message(
+        f"Starting redeployment process to {best_region}", region=best_region)
 
     update_tfvars(best_region)
-    log_message("Starting redeployment process...")
     run_terraform()
 
-    if instance_ip := get_terraform_output("instance_public_ip"):
-        print(f"✅ New instance deployed at: http://{instance_ip}")
-        log_message("Deployment completed successfully!")
+    instance_ip = get_terraform_output("instance_public_ip")
+    if instance_ip:
+        log_message(
+            f"✅ Deployment completed in {best_region}. Instance at: http://{instance_ip}", region=best_region)
     else:
-        print("❌ Failed to retrieve instance details.")
+        log_message(
+            f"❌ Failed to retrieve instance details in {best_region}", region=best_region, level="error")
 
 
 # -------------------------------------------------------------------
