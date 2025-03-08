@@ -7,8 +7,9 @@ __pycache__/
 # If using venv
 venv/
 env/
+
 # Logs
-*.log
+redeploy.log
 
 # Terraform
 .terraform/
