@@ -1,9 +1,0 @@
-🌍 eu-west-1 (Ireland) Carbon Intensity: 331 gCO₂/kWh
-🌍 eu-west-2 (London) Carbon Intensity: 158 gCO₂/kWh
-🌍 eu-central-1 (Frankfurt) Carbon Intensity: 343 gCO₂/kWh
-
-⚡ Recommended AWS Region (lowest carbon): eu-west-2 (London)
-✅ Found running instance(s) in eu-west-2 (London): ['i-0211803fdc35c7855']
-
-ℹ️  Current region with the lowest intensity among deployed: eu-west-2 (London)
-✅ No change needed - you're already in the greenest region.
