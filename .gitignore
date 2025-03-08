@@ -12,6 +12,7 @@ env/
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfvars
+terraform/terraform.tfvars
 *.tfvars.json
 .terraform.lock.hcl
 
