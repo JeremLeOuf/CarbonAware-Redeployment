@@ -5,6 +5,8 @@ import requests
 import time
 from dotenv import load_dotenv
 from pathlib import Path
+import logging
+from datetime import datetime
 
 # -------------------------------------------------------------------
 # Load environment variables
@@ -37,6 +39,27 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--auto", action="store_true",
                     help="Run in non-interactive mode.")
 args = parser.parse_args()
+
+
+# -------------------------------------------------------------------
+# Configure logging
+# -------------------------------------------------------------------
+
+LOG_FILE = "redeploy.log"
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+
+def log_message(message, level="info"):
+    """Log messages with timestamp."""
+    if level == "error":
+        logging.error(message)
+    else:
+        logging.info(message)
 
 # -------------------------------------------------------------------
 # Functions
@@ -102,10 +125,12 @@ def deploy():
     print("✅ Running in auto mode. Proceeding with deployment.")
 
     update_tfvars(best_region)
+    log_message("Starting redeployment process...")
     run_terraform()
 
     if instance_ip := get_terraform_output("instance_public_ip"):
         print(f"✅ New instance deployed at: http://{instance_ip}")
+        log_message("Deployment completed successfully!")
     else:
         print("❌ Failed to retrieve instance details.")
 
