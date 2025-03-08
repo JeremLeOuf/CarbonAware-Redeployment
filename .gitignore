@@ -3,15 +3,17 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 *.egg
+
 # If using venv
 venv/
 env/
+# Logs
+*.log
 
 # Terraform
 .terraform/
-terraform.tfstate
-terraform.tfstate.backup
-terraform.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
 terraform/terraform.tfvars
 *.tfvars.json
 .terraform.lock.hcl
