@@ -99,20 +99,12 @@ def deploy():
     """Main deployment logic."""
     best_region = find_best_region()
 
-    if not args.auto:  # Interactive Mode
-        user_input = input(
-            f"Do you want to deploy in {best_region} ({REGION_FRIENDLY_NAMES.get(best_region)})? (yes/no): ").strip().lower()
-        if user_input != "yes":
-            print("❌ Deployment aborted.")
-            return
-    else:
-        print("✅ Running in auto mode. Proceeding with deployment.")
+    print("✅ Running in auto mode. Proceeding with deployment.")
 
     update_tfvars(best_region)
     run_terraform()
 
-    instance_ip = get_terraform_output("instance_public_ip")
-    if instance_ip:
+    if instance_ip := get_terraform_output("instance_public_ip"):
         print(f"✅ New instance deployed at: http://{instance_ip}")
     else:
         print("❌ Failed to retrieve instance details.")

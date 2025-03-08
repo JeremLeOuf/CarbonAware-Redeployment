@@ -191,6 +191,15 @@ def get_terraform_output(output_var: str):
         f"❌ Failed to retrieve Terraform output '{output_var}': {result.stderr}")
     return None
 
+# TODO Rename this here and in `deploy`
+
+
+def _extracted_from_deploy_(instance_ip):
+    update_dns_record(instance_ip, MYAPP_DOMAIN,
+                      HOSTED_ZONE_ID, DNS_TTL)
+    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
+    time.sleep(DNS_TTL)
+
 # -------------------------------------------------------------------
 # Health Check
 # -------------------------------------------------------------------
@@ -340,14 +349,6 @@ def deploy():
             print("❌ Failed to retrieve instance details. Check Terraform outputs.")
     else:
         print("✅ No change needed - you're already in the greenest region.")
-
-
-# TODO Rename this here and in `deploy`
-def _extracted_from_deploy_(instance_ip):
-    update_dns_record(instance_ip, MYAPP_DOMAIN,
-                      HOSTED_ZONE_ID, DNS_TTL)
-    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
-    time.sleep(DNS_TTL)
 
 
 if __name__ == "__main__":
