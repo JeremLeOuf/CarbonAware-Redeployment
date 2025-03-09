@@ -117,7 +117,6 @@ def get_terraform_output(output_var: str):
 def deploy():
     """Main deployment logic."""
     best_region = find_best_region()
-
     log_message(
         f"Starting redeployment process to {best_region}...\n", region=best_region)
 
