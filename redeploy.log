@@ -1,4 +1,0 @@
-2025-03-09 03:28:51 - INFO - [Region: N/A] - Found running instance(s) in eu-west-2: [['i-0f90604bff78c1061']]
-2025-03-09 03:28:54 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
-2025-03-09 03:30:47 - INFO - [Region: N/A] - Found running instance(s) in eu-west-2: [['i-0f90604bff78c1061']]
-2025-03-09 03:30:49 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
