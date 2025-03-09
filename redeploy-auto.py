@@ -20,7 +20,7 @@ AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 # DNS updates for Route53:
 HOSTED_ZONE_ID = os.getenv("HOSTED_ZONE_ID", "")
 MYAPP_DOMAIN = os.getenv("DOMAIN_NAME", "")
-DNS_TTL = int(os.getenv("DNS_TTL", "60"))  # default 60 seconds
+DNS_TTL = 60
 
 # -------------------------------------------------------------------
 # Paths
@@ -117,10 +117,7 @@ def find_best_region() -> str:
 
 
 def get_old_instances(region: str):
-    """
-    Fetch running instances in the given AWS region that are tagged 'myapp-instance'.
-    Returns a list of instance IDs.
-    """
+    """Fetch running instances in the given AWS region tagged 'myapp-instance'."""
     try:
         cmd = [
             "aws", "ec2", "describe-instances",
@@ -128,20 +125,17 @@ def get_old_instances(region: str):
             "--filters",
             "Name=tag:Name,Values=myapp-instance",
             "Name=instance-state-name,Values=running",
-            "--query", "Reservations[*].Instances[*].[InstanceId,State.Name,LaunchTime]",
-            "--output", "json"
+            "--query", "Reservations[*].Instances[*].[InstanceId]",
+            "--output", "text", "--no-cli-pager"
+            # ✅ Use text output to reduce verbosity
         ]
         result = subprocess.run(
             cmd, capture_output=True, text=True, check=True)
-        instances = json.loads(result.stdout)
-        return [
-            inst[0]
-            for reservation in instances
-            for inst in reservation
-            if inst
-        ]
+        instances = result.stdout.split()
+        return instances or []
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error fetching instances in {region}: {e}")
+        log_message(
+            f"❌ Error fetching instances in {region}: {e}", level="error")
         return []
 
 
@@ -161,18 +155,27 @@ def check_existing_deployments():
 
 
 def terminate_instance(instance_id: str, region: str):
-    """
-    Terminate an EC2 instance in the specified AWS region.
-    """
-    friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
-    print(
-        f"🛑 Terminating old instance {instance_id} in {region} ({friendly_region})...")
-    subprocess.run(
-        ["aws", "ec2", "terminate-instances",
-            "--instance-ids", instance_id, "--region", region],
-        check=True
-    )
-    print(f"✅ Successfully terminated {instance_id}")
+    """Terminate an EC2 instance in the specified AWS region with reduced output."""
+    log_message(f"🛑 Terminating old instance {instance_id} in {region}...")
+
+    cmd = [
+        "aws", "ec2", "terminate-instances",
+        "--instance-ids", instance_id,
+        "--region", region,
+        "--no-cli-pager",  # ✅ Suppresses interactive output
+        "--output", "text"  # ✅ Makes it less verbose
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode == 0:
+        print(f"✅ Successfully terminated {instance_id} in {region}")
+        log_message("Successfully terminated {instance_id} in {region}")
+    else:
+        print(
+            f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
+        log_message(
+            f"Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}", level="error")
 
 
 def update_tfvars(region: str):
@@ -190,17 +193,22 @@ def update_tfvars(region: str):
     friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
     print(
         f"✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
+    log_message(
+        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
 
 
 def run_terraform():
-    """
-    Run 'terraform init' and 'terraform apply -auto-approve' in TERRAFORM_DIR.
-    """
-    print(f"\n🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
-    subprocess.run(["terraform", "init", "--upgrade"],
-                   cwd=TERRAFORM_DIR, check=True)
-    subprocess.run(["terraform", "apply", "-auto-approve"],
-                   cwd=TERRAFORM_DIR, check=True)
+    """Run Terraform apply with reduced verbosity and log to file."""
+    print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
+    log_message(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
+
+    with open(LOG_FILE, "a") as log_file:
+        subprocess.run(["terraform", "init", "-input=false", "-no-color"],
+                       cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
+        subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
+                       cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
+
+    log_message("Terraform deployment complete!")
     print("✅ Terraform deployment complete!")
 
 
@@ -228,16 +236,21 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
     """
     url = f"http://{ip_address}"
     for attempt in range(1, max_attempts + 1):
-        with contextlib.suppress(requests.exceptions.RequestException):
+        try:
             response = requests.get(url, timeout=3)
             if response.status_code == 200:
                 print(f"✅ HTTP check succeeded for {url}")
                 return True
+        except requests.exceptions.RequestException as e:
+            logging.debug(f"HTTP request exception for {url}: {e}")
+
         print(
             f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
         time.sleep(interval)
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}")
+    log_message(
+        f"Gave up waiting for a successful HTTP response from {url}", level="error")
     return False
 
 # -------------------------------------------------------------------
@@ -246,10 +259,8 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
 
 
 def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60):
-    """
-    Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
-    """
-    print(f"🔄 Updating DNS record {domain} → {new_ip}")
+    """Update a Route53 A record (myapp.example.com) to point to 'new_ip'."""
+    log_message(f"🔄 Updating DNS record {domain} → {new_ip}")
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -273,13 +284,18 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60):
     cmd = [
         "aws", "route53", "change-resource-record-sets",
         "--hosted-zone-id", zone_id,
-        "--change-batch", f"file://{temp_path}"
+        "--change-batch", f"file://{temp_path}",
+        "--output", "text", "--no-cli-pager"  # ✅ Suppress output
     ]
-    ret = subprocess.run(cmd)
+    ret = subprocess.run(cmd, capture_output=True, text=True)
+
     if ret.returncode == 0:
         print(f"✅ Successfully updated DNS record {domain} to {new_ip}")
+        log_message(f"Successfully updated DNS record {domain} to {new_ip}")
     else:
-        print(f"❌ Failed to update DNS record {domain}")
+        print(f"❌ Failed to update DNS record {domain}", level="error")
+        log_message(f"Failed to update DNS record {domain}", level="error")
+
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -297,9 +313,10 @@ def deploy():
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     deployments = check_existing_deployments()
 
-    best_region = "eu-central-1"  # ✅ For testing purposes
     log_message(
         f"Starting redeployment process to {best_region}", region=best_region)
+    print(
+        f"Starting redeployment process to {best_region}")
 
     # CASE 1: No existing deployment
     if not deployments:
@@ -318,6 +335,7 @@ def deploy():
                                       HOSTED_ZONE_ID, DNS_TTL)  # ✅ Fix here
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
+                    print("⏳ DNS should be propagated!")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
