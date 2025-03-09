@@ -297,6 +297,7 @@ def deploy():
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     deployments = check_existing_deployments()
 
+    best_region = "eu-central-1"  # ✅ For testing purposes
     log_message(
         f"Starting redeployment process to {best_region}", region=best_region)
 
