@@ -9,7 +9,7 @@ venv/
 env/
 
 # # Logs
-redeploy.log
+logs/
 
 # Terraform
 .terraform/
