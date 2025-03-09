@@ -15,3 +15,10 @@
 2025-03-09 01:45:16 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
 
 2025-03-09 02:18:49 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
+2025-03-09 02:45:39 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
+2025-03-09 02:45:45 - INFO - [Region: N/A] - No existing deployment. Deploying in eu-central-1...
+2025-03-09 02:45:45 - INFO - [Region: N/A] - \u2705 Updated Terraform variables: Region=eu-central-1, Deployment_ID=1741484745
+2025-03-09 02:45:45 - INFO - [Region: N/A] - 
+\U0001f504 Running Terraform deployment in: C:\Users\jdjao\OneDrive\_Code\CarbonAware-Redeployment\terraform
+2025-03-09 02:46:12 - INFO - [Region: N/A] - \u2705 Terraform deployment complete!
+2025-03-09 02:46:13 - INFO - [Region: N/A] - \u2705 New instance running at: http://18.185.124.48

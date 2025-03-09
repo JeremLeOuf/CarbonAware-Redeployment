@@ -162,6 +162,7 @@ def check_existing_deployments():
 def deploy():
     """Main deployment logic."""
     best_region = find_best_region()
+<<<<<<< HEAD
     deployments = check_existing_deployments()
 
     if not deployments:
@@ -179,6 +180,11 @@ def deploy():
         else:
             log_message(
                 f"🌱 A lower carbon region is available: {best_region}. Redeploying...")
+=======
+
+    log_message(
+        f"Starting redeployment process to {best_region}", region=best_region)
+>>>>>>> parent of 90bbbb2 (Final tweaks)
 
     update_tfvars(best_region)
     run_terraform()
