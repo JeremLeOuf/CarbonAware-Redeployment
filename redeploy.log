@@ -2,3 +2,14 @@
 2025-03-09 03:28:54 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
 2025-03-09 03:30:47 - INFO - [Region: N/A] - Found running instance(s) in eu-west-2: [['i-0f90604bff78c1061']]
 2025-03-09 03:30:49 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
+2025-03-09 04:10:19 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:17:24 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:21:44 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:32:47 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
+2025-03-09 04:32:55 - INFO - [Region: N/A] - \u2705 No redeployment needed. Already in greenest region (eu-west-2).
+2025-03-09 04:33:31 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:35:00 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:35:54 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:36:15 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:38:51 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
+2025-03-09 04:40:25 - INFO - [Region: eu-central-1] - Starting redeployment process to eu-central-1
