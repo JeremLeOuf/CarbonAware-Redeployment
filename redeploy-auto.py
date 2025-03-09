@@ -169,8 +169,8 @@ def terminate_instance(instance_id: str, region: str):
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:
-        print(f"✅ Successfully terminated {instance_id} in {region}")
-        log_message("Successfully terminated {instance_id} in {region}")
+        print(f"✅ Started termination {instance_id} in {region}.")
+        log_message(f"Successfully terminated {instance_id} in {region}.")
     else:
         print(
             f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
