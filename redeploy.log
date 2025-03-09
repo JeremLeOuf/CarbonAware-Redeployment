@@ -1,28 +1,4 @@
-2025-03-09 00:43:57 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2
-2025-03-09 00:44:17 - INFO - [Region: eu-west-2] - Deployment completed in eu-west-2. Instance at: http://18.130.244.132
-2025-03-09 01:43:00 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
-
-2025-03-09 01:43:21 - INFO - [Region: eu-west-2] - Deployment completed in eu-west-2. Instance at: http://13.41.199.15
-
-2025-03-09 01:43:48 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
-
-2025-03-09 01:43:55 - INFO - [Region: eu-west-2] - Deployment completed in eu-west-2. Instance at: http://13.41.199.15
-
-2025-03-09 01:44:51 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
-
-2025-03-09 01:45:02 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
-
-2025-03-09 01:45:16 - INFO - [Region: eu-west-2] - Starting redeployment process to eu-west-2...
-
-2025-03-09 02:18:49 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
-2025-03-09 02:45:39 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
-2025-03-09 02:45:45 - INFO - [Region: N/A] - No existing deployment. Deploying in eu-central-1...
-2025-03-09 02:45:45 - INFO - [Region: N/A] - \u2705 Updated Terraform variables: Region=eu-central-1, Deployment_ID=1741484745
-2025-03-09 02:45:45 - INFO - [Region: N/A] - 
-\U0001f504 Running Terraform deployment in: C:\Users\jdjao\OneDrive\_Code\CarbonAware-Redeployment\terraform
-2025-03-09 02:46:12 - INFO - [Region: N/A] - \u2705 Terraform deployment complete!
-2025-03-09 02:46:13 - INFO - [Region: N/A] - \u2705 New instance running at: http://18.185.124.48
-2025-03-09 03:08:17 - INFO - [Region: N/A] - \u26a1 Recommended AWS Region (lowest carbon): eu-west-2 (London)
-2025-03-09 03:08:21 - INFO - [Region: N/A] - \u2705 Found running instance(s) in eu-west-2: [['i-082f24ac46f6923d1']]
-2025-03-09 03:08:23 - INFO - [Region: N/A] - \u2705 Found running instance(s) in eu-central-1: [['i-0d06123613d9a4245']]
-2025-03-09 03:08:24 - INFO - [Region: N/A] - \u2705 No redeployment needed. Already in greenest region (eu-west-2).
+2025-03-09 03:28:51 - INFO - [Region: N/A] - Found running instance(s) in eu-west-2: [['i-0f90604bff78c1061']]
+2025-03-09 03:28:54 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
+2025-03-09 03:30:47 - INFO - [Region: N/A] - Found running instance(s) in eu-west-2: [['i-0f90604bff78c1061']]
+2025-03-09 03:30:49 - INFO - [Region: N/A] - No redeployment needed. Already in greenest region (eu-west-2).
