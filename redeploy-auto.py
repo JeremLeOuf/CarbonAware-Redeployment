@@ -49,7 +49,7 @@ REGION_FRIENDLY_NAMES = {
 # -------------------------------------------------------------------
 
 # Set the log file inside the project directory
-LOG_FILE = str(Path(__file__).parent / "redeploy.log")
+LOG_FILE = str(Path(__file__).parent / "logs/redeploy.log")
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -208,7 +208,7 @@ def run_terraform():
     print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
     log_message(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
 
-    with open("terraform.log", "a") as log_file:  # ✅ Logs only to a file
+    with open("logs/terraform.log", "a") as log_file:  # ✅ Logs only to a file
         subprocess.run(["terraform", "init", "-input=false", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
         subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
