@@ -49,12 +49,14 @@ logging.basicConfig(
 def log_message(msg, region="N/A", level="info"):
     """Log messages with timestamp and AWS region."""
     log_data = {"region": region,
-                "log_msg": msg}  # ✅ Changed "message" to "log_msg"
+                "log_msg": msg}
 
     if level == "error":
         logging.error(msg, extra=log_data)
     else:
         logging.info(msg, extra=log_data)
+
+
 # -------------------------------------------------------------------
 # Functions
 # -------------------------------------------------------------------
@@ -117,17 +119,17 @@ def deploy():
     best_region = find_best_region()
 
     log_message(
-        f"Starting redeployment process to {best_region}", region=best_region)
+        f"Starting redeployment process to {best_region}...\n", region=best_region)
 
     update_tfvars(best_region)
     run_terraform()
 
     if instance_ip := get_terraform_output("instance_public_ip"):
         log_message(
-            f"Deployment completed in {best_region}. Instance at: http://{instance_ip}", region=best_region)
+            f"Deployment completed in {best_region}. Instance at: http://{instance_ip}\n", region=best_region)
     else:
         log_message(
-            f"Failed to retrieve instance details in {best_region}", region=best_region, level="error")
+            f"Failed to retrieve instance details in {best_region}\n", region=best_region, level="error")
 
 
 # -------------------------------------------------------------------
