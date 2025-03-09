@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import logging
 from datetime import datetime
+import json
 
 # -------------------------------------------------------------------
 # Load environment variables
@@ -48,8 +49,7 @@ logging.basicConfig(
 
 def log_message(msg, region="N/A", level="info"):
     """Log messages with timestamp and AWS region."""
-    log_data = {"region": region,
-                "log_msg": msg}
+    log_data = {"region": region, "log_msg": msg}
 
     if level == "error":
         logging.error(msg, extra=log_data)
@@ -72,7 +72,8 @@ def get_carbon_intensity(region_code: str) -> float:
         data = response.json()
         return data.get("carbonIntensity", float("inf"))
     except requests.exceptions.RequestException as exc:
-        print(f"❌ Error fetching data for {region_code}: {exc}")
+        log_message(
+            f"❌ Error fetching data for {region_code}: {exc}", level="error")
         return float("inf")
 
 
@@ -81,7 +82,7 @@ def find_best_region() -> str:
     carbon_data = {aws_region: get_carbon_intensity(
         map_zone) for aws_region, map_zone in AWS_REGIONS.items()}
     best_region = min(carbon_data, key=carbon_data.get)
-    print(
+    log_message(
         f"⚡ Recommended AWS Region (lowest carbon): {best_region} ({REGION_FRIENDLY_NAMES.get(best_region, best_region)})")
     return best_region
 
@@ -93,17 +94,17 @@ def update_tfvars(region: str):
     with open(tfvars_path, "w") as f:
         f.write(f'aws_region = "{region}"\n')
         f.write(f'deployment_id = "{deployment_id}"\n')
-    print(
+    log_message(
         f"✅ Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}")
 
 
 def run_terraform():
     """Run Terraform apply."""
-    print(f"\n🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
+    log_message(f"\n🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
     subprocess.run(["terraform", "init"], cwd=TERRAFORM_DIR, check=True)
     subprocess.run(["terraform", "apply", "-auto-approve"],
                    cwd=TERRAFORM_DIR, check=True)
-    print("✅ Terraform deployment complete!")
+    log_message("✅ Terraform deployment complete!")
 
 
 def get_terraform_output(output_var: str):
@@ -114,21 +115,85 @@ def get_terraform_output(output_var: str):
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def get_old_instances(region: str):
+    """Fetch running instances in the given AWS region tagged 'myapp-instance'."""
+    try:
+        cmd = [
+            "aws", "ec2", "describe-instances",
+            "--region", region,
+            "--filters",
+            "Name=tag:Name,Values=myapp-instance",
+            "Name=instance-state-name,Values=running",
+            "--query", "Reservations[*].Instances[*].[InstanceId]",
+            "--output", "json"
+        ]
+        result = subprocess.run(cmd, capture_output=True,
+                                text=True, check=True)
+        instances = json.loads(result.stdout)
+        return [inst for reservation in instances for inst in reservation]
+    except subprocess.CalledProcessError as e:
+        log_message(
+            f"❌ Error fetching instances in {region}: {e}", level="error")
+        return []
+
+
+def terminate_instance(instance_id: str, region: str):
+    """Terminate an EC2 instance."""
+    log_message(f"🛑 Terminating old instance {instance_id} in {region}...")
+    subprocess.run(
+        ["aws", "ec2", "terminate-instances",
+            "--instance-ids", instance_id, "--region", region],
+        check=True
+    )
+    log_message(f"✅ Successfully terminated {instance_id} in {region}")
+
+
+def check_existing_deployments():
+    """Check all AWS_REGIONS for running instances."""
+    deployments = {}
+    for region in AWS_REGIONS.keys():
+        if instance_ids := get_old_instances(region):
+            log_message(
+                f"✅ Found running instance(s) in {region}: {instance_ids}")
+            deployments[region] = instance_ids
+    return deployments
+
+
 def deploy():
     """Main deployment logic."""
     best_region = find_best_region()
-    log_message(
-        f"Starting redeployment process to {best_region}...\n", region=best_region)
+    deployments = check_existing_deployments()
+
+    if not deployments:
+        log_message(f"No existing deployment. Deploying in {best_region}...")
+    else:
+        current_regions = list(deployments.keys())
+        current_best_region = min(
+            current_regions, key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
+        )
+
+        if current_best_region == best_region:
+            log_message(
+                f"✅ No redeployment needed. Already in greenest region ({best_region}).")
+            return
+        else:
+            log_message(
+                f"🌱 A lower carbon region is available: {best_region}. Redeploying...")
 
     update_tfvars(best_region)
     run_terraform()
 
     if instance_ip := get_terraform_output("instance_public_ip"):
-        log_message(
-            f"Deployment completed in {best_region}. Instance at: http://{instance_ip}\n", region=best_region)
+        log_message(f"✅ New instance running at: http://{instance_ip}")
+
+        # Terminate old instances
+        for region, instance_ids in deployments.items():
+            if region != best_region:
+                for instance_id in instance_ids:
+                    terminate_instance(instance_id, region)
     else:
         log_message(
-            f"Failed to retrieve instance details in {best_region}\n", region=best_region, level="error")
+            f"❌ Failed to retrieve new instance details in {best_region}", level="error")
 
 
 # -------------------------------------------------------------------
