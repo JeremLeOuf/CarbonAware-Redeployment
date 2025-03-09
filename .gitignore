@@ -8,11 +8,7 @@ __pycache__/
 venv/
 env/
 
-<<<<<<< HEAD
-# Logs
-=======
 # # Logs
->>>>>>> parent of 90d4375 (Remove logs from gitignore)
 # redeploy.log
 
 # Terraform
