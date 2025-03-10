@@ -10,4 +10,7 @@ output "instance_id" {
   value       = aws_instance.myapp.id
 }
 
-
+output "security_group_id" {
+  description = "ID of the security group"
+  value       = aws_security_group.myapp_sg.id
+}
