@@ -362,7 +362,7 @@ def deploy():
 
     # CASE 1: No instances are currently running
     if not deployments:
-        print("\nℹ️  No instance deployed yet. Starting fresh deployment...")
+        print("\nℹ️ No instance deployed yet. Starting fresh deployment...")
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
