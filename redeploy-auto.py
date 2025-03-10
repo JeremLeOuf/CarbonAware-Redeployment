@@ -267,7 +267,8 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    print(f"Updating DNS record {domain} → {new_ip}", region=region)
+    print(
+        f"Updating DNS record {domain} → {new_ip}... this may take a few minutes.", region=region)
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
