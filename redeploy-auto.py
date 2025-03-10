@@ -419,7 +419,7 @@ def deploy():
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 A lower carbon region is available: {chosen_region} ({friendly})! Current: {current_best_region} ({current_best_friendly}).\n"
+            f"🌱 Redeploying to {chosen_region} ({friendly})...\nCurrent: {current_best_region} ({current_best_friendly}).\n"
         )
 
         update_tfvars(chosen_region)
