@@ -268,7 +268,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
     print(
-        f"Updating DNS record {domain} → {new_ip}... this may take a few minutes.", region=region)
+        f"Updating DNS record {domain} → {new_ip}... this may take a few minutes.")
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
@@ -351,9 +351,7 @@ def deploy():
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}")
-                print(
-                    f"✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
+                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.")
 
             else:
                 print(
@@ -386,11 +384,11 @@ def deploy():
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
-                print(
-                    f"✅ Redeployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+                    print(
+                        f"✅ Redeployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:

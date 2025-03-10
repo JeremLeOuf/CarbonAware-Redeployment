@@ -369,15 +369,15 @@ def deploy():
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
-                print(
-                    f"✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}")
+                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n")
+                    print(
+                        f"✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
