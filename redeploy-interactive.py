@@ -436,7 +436,7 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️  Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
+        f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
