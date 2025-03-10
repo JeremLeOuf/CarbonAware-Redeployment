@@ -215,11 +215,6 @@ def remove_security_groups(region: str):
         ]
         print(f"🛑 Deleting SG {sg_id} in region {region}...")
         ret = subprocess.run(cmd, capture_output=True, text=True)
-        if ret.returncode == 0:
-            print(f"✅ Deleted security group {sg_id} in {region}.")
-        else:
-            print(
-                f"❌ Failed to delete {sg_id} in {region}. Error: {ret.stderr}")
 
 
 def update_tfvars(region: str):
