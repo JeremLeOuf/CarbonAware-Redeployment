@@ -148,7 +148,7 @@ def check_existing_deployments():
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
-                f"✅ Found running instance(s) in {region} ({friendly_region}): {instance_ids}")
+                f"\n✅ Found running instance(s) in {region} ({friendly_region}): {instance_ids}")
             deployments[region] = instance_ids
     return deployments
 
@@ -170,7 +170,7 @@ def terminate_instance(instance_id: str, region: str):
     if result.returncode == 0:
         print(f"⏳ Started termination of {instance_id} in {region}.")
         log_message(
-            f"Started terminated {instance_id} in {region}.\n", region=region)
+            f"Started termination {instance_id} in {region}.\n", region=region)
     else:
         print(
             f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
@@ -271,7 +271,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     print(
         f"\nUpdating DNS record {domain} → {new_ip}... this may take a few minutes.")
-    log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
+    log_message(f"Updating DNS record {domain} → {new_ip}\n", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -338,7 +338,9 @@ def deploy():
     # Case 1: No instances are currently running
     if not deployments:
         print(
-            f"\nℹ️  No instance deployed yet.\nDeploying to {chosen_region}...\n")
+            f"\nℹ️ No instance deployed yet.\nDeploying to {chosen_region}...\n")
+        log_message(
+            f"Starting new deployment to {chosen_region}...", region=chosen_region)
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
