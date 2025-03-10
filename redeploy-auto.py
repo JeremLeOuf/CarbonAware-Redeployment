@@ -206,12 +206,15 @@ def update_tfvars(region: str):
         region=region
     )
 
+
 LOGS_DIR = Path(__file__).parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)  # Create logs dir if missing
 
+
 def run_terraform(deploy_region):
-    print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
-    log_message(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}", region=deploy_region)
+    print(f"🔄 Running Terraform deployment in {deploy_region}...")
+    log_message(
+        f"🔄 Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
     # Use a local path for terraform.log in your logs directory
     log_file_path = LOGS_DIR / "terraform.log"
@@ -223,12 +226,14 @@ def run_terraform(deploy_region):
             cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file
         )
         subprocess.run(
-            ["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
+            ["terraform", "apply", "-auto-approve",
+                "-compact-warnings", "-no-color"],
             cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file
         )
 
     log_message("Terraform deployment complete!", region=deploy_region)
     print("✅ Terraform deployment complete!")
+
 
 def get_terraform_output(output_var: str):
     """

@@ -7,6 +7,7 @@ variable "aws_region" {
 variable "deployment_id" {
   type        = string
   description = "Unique deployment identifier (used to force new instance)"
+  default = 0
 }
 
 variable "amis" {
