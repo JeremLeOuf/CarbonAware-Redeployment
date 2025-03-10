@@ -29,7 +29,7 @@ resource "aws_security_group" "myapp_sg" {
   vpc_id      = data.aws_vpc.default.id
 
   lifecycle {
-    create_before_destroy = false
+    create_before_destroy = true
   }
   
   ingress {

@@ -12,7 +12,7 @@ import logging
 # Load environment variables (from .env or system environment)
 # -------------------------------------------------------------------
 load_dotenv()
-ELECTRICITY_MAPS_API = "https://api.electricitymap.org/v3/carbon-intensity/latest"
+ELECTRICITY_MAPS_API_TOKEN = "https://api.electricitymap.org/v3/carbon-intensity/latest"
 AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 
 # DNS updates for Route53:
@@ -80,7 +80,7 @@ def get_carbon_intensity(region_code: str) -> float:
     headers = {"auth-token": AUTH_TOKEN}
     try:
         response = requests.get(
-            f"{ELECTRICITY_MAPS_API}?zone={region_code}", headers=headers
+            f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}", headers=headers
         )
         response.raise_for_status()
         data = response.json()
@@ -409,7 +409,7 @@ def deploy():
                 print(
                     "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
         else:
-            print("✅ No change needed - you're already in the greenest region.\n")
+            print("✅ No change needed - you're already in the greenest region.")
 
 
 if __name__ == "__main__":
