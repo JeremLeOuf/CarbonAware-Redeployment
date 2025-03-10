@@ -397,7 +397,7 @@ def deploy():
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
 
             else:
                 print(
@@ -435,7 +435,7 @@ def deploy():
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...\n")
                     time.sleep(DNS_TTL)
                     print(
-                        f"✅ Redeployment complete! New instance available at: http://{MYAPP_DOMAIN}.\n")
+                        f"✅ Redeployment complete! Application available at: http://{MYAPP_DOMAIN}.\n")
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:

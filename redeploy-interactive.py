@@ -325,7 +325,6 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    print(f"Updating DNS record {domain} → {new_ip}")
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
@@ -416,12 +415,11 @@ def deploy():
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
+                    print(
+                        f"⏳ Updating DNS record {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n")
-                    print(
-                        f"✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n ✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
