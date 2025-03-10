@@ -242,7 +242,7 @@ def update_tfvars(region: str):
 
     friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
     print(
-        f"\n✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
+        f"\n✅ Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}")
     log_message(
         f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}\n",
         region=region
