@@ -1,5 +1,3 @@
-# Description: This script is used to deploy a new instance of an application in the AWS region with the lowest carbon intensity. It will terminate the old instance(s) if a new instance is successfully deployed. It will also update the DNS record in Route53 if the domain name and hosted zone ID are provided.
-import contextlib
 import subprocess
 import os
 import requests
@@ -32,8 +30,8 @@ TERRAFORM_DIR = SCRIPT_DIR / "terraform"
 # AWS Regions + Mapping to Electricity Map Zones
 # -------------------------------------------------------------------
 AWS_REGIONS = {
-    "eu-west-1": "IE",  # Ireland
-    "eu-west-2": "GB",  # London
+    "eu-west-1": "IE",   # Ireland
+    "eu-west-2": "GB",   # London
     "eu-central-1": "DE"  # Frankfurt
 }
 
@@ -47,8 +45,6 @@ REGION_FRIENDLY_NAMES = {
 # -------------------------------------------------------------------
 # Configure logging
 # -------------------------------------------------------------------
-
-# Set the log file inside the project directory
 LOG_FILE = str(Path(__file__).parent / "logs/redeploy.log")
 
 logging.basicConfig(
@@ -129,7 +125,6 @@ def get_old_instances(region: str):
             "Name=instance-state-name,Values=running",
             "--query", "Reservations[*].Instances[*].[InstanceId]",
             "--output", "text", "--no-cli-pager"
-            # ✅ Use text output to reduce verbosity
         ]
         result = subprocess.run(
             cmd, capture_output=True, text=True, check=True)
@@ -137,7 +132,10 @@ def get_old_instances(region: str):
         return instances or []
     except subprocess.CalledProcessError as e:
         log_message(
-            f"❌ Error fetching instances in {region}: {e}", level="error")
+            f"❌ Error fetching instances in {region}: {e}",
+            region=region,
+            level="error"
+        )
         return []
 
 
@@ -158,30 +156,32 @@ def check_existing_deployments():
 
 def terminate_instance(instance_id: str, region: str):
     """Terminate an EC2 instance in the specified AWS region with reduced output."""
-    log_message(f"🛑 Terminating old instance {instance_id} in {region}...")
+    log_message(
+        f"🛑 Terminating old instance {instance_id} in {region}...", region=region)
 
     cmd = [
         "aws", "ec2", "terminate-instances",
         "--instance-ids", instance_id,
         "--region", region,
-        "--no-cli-pager",  # ✅ Suppresses interactive output
-        "--output", "text"  # ✅ Makes it less verbose
+        "--no-cli-pager",
+        "--output", "text"
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
-
     if result.returncode == 0:
         print(f"✅ Started termination {instance_id} in {region}.")
         log_message(
-            f"🛑 Terminating old instance {instance_id} in {region}...", region=region)
-        log_message(
-            f"✅ Successfully terminated {instance_id} in {region}", region=region)
-
+            f"✅ Successfully terminated {instance_id} in {region}",
+            region=region
+        )
     else:
         print(
             f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
         log_message(
-            f"Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}", level="error")
+            f"Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}",
+            region=region,
+            level="error"
+        )
 
 
 def update_tfvars(region: str):
@@ -200,21 +200,29 @@ def update_tfvars(region: str):
     print(
         f"✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
     log_message(
-        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
+        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}",
+        region=region
+    )
 
 
-def run_terraform():
-    """Run Terraform apply with reduced verbosity and log to file."""
+def run_terraform(deploy_region):
+    """
+    Run Terraform apply with reduced verbosity and log to file,
+    referencing the region so logs don't fail.
+    """
     print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
-    log_message(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
+    log_message(
+        f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}",
+        region=deploy_region
+    )
 
-    with open("logs/terraform.log", "a") as log_file:  # ✅ Logs only to a file
+    with open("logs/terraform.log", "a") as log_file:
         subprocess.run(["terraform", "init", "-input=false", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
         subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
 
-    log_message("Terraform deployment complete!", region=best_region)
+    log_message("Terraform deployment complete!", region=deploy_region)
     print("✅ Terraform deployment complete!")
 
 
@@ -238,8 +246,9 @@ def get_terraform_output(output_var: str):
 
 def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> bool:
     """
-    Poll http://<ip_address>:<port> until we get a 200 response or we exhaust max_attempts.
+    Poll http://<ip_address> until we get a 200 response or we exhaust max_attempts.
     """
+    import logging
     url = f"http://{ip_address}"
     for attempt in range(1, max_attempts + 1):
         try:
@@ -256,7 +265,10 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}")
     log_message(
-        f"Gave up waiting for a successful HTTP response from {url}", level="error")
+        f"Gave up waiting for a successful HTTP response from {url}",
+        region="N/A",
+        level="error"
+    )
     return False
 
 # -------------------------------------------------------------------
@@ -264,10 +276,11 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
 # -------------------------------------------------------------------
 
 
-def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60):
-    """Update a Route53 A record (myapp.example.com) to point to 'new_ip'."""
-    log_message(
-        f"🔄 Updating DNS record {MYAPP_DOMAIN} → {instance_ip}", region=best_region)
+def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, region="N/A"):
+    """
+    Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
+    """
+    log_message(f"🔄 Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -292,17 +305,18 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60):
         "aws", "route53", "change-resource-record-sets",
         "--hosted-zone-id", zone_id,
         "--change-batch", f"file://{temp_path}",
-        "--output", "text", "--no-cli-pager"  # ✅ Suppress output
+        "--output", "text", "--no-cli-pager"
     ]
     ret = subprocess.run(cmd, capture_output=True, text=True)
 
     if ret.returncode == 0:
         print(f"✅ Successfully updated DNS record {domain} to {new_ip}")
-        log_message(f"Successfully updated DNS record {domain} to {new_ip}")
+        log_message(
+            f"Successfully updated DNS record {domain} to {new_ip}", region=region)
     else:
-        print(f"❌ Failed to update DNS record {domain}", level="error")
-        log_message(f"Failed to update DNS record {domain}", level="error")
-
+        print(f"❌ Failed to update DNS record {domain}")
+        log_message(
+            f"Failed to update DNS record {domain}", region=region, level="error")
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -318,30 +332,29 @@ def deploy():
     3. If a better region is available, redeploys there and terminates old instances.
     4. Updates DNS records if needed.
     """
-
-    best_region = find_best_region()
-    best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
+    chosen_region = find_best_region()
+    friendly = REGION_FRIENDLY_NAMES.get(chosen_region, chosen_region)
     deployments = check_existing_deployments()
 
-    # ✅ If an instance is already running in the lowest-carbon region, do nothing
-    if best_region in deployments:
+    # If an instance is already running in the lowest-carbon region, do nothing
+    if chosen_region in deployments:
         log_message(
-            f"✅ No redeployment needed, keeping current state in {best_region} ({best_friendly}).",
-            region=best_region
+            f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).",
+            region=chosen_region
         )
         print(
-            f"✅ No redeployment needed, keeping current state in {best_region} ({best_friendly}).")
+            f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
         return
 
     log_message(
-        f"Starting redeployment process to {best_region}", region=best_region)
-    print(f"🌍 Starting redeployment process to {best_region}")
+        f"Starting redeployment process to {chosen_region}", region=chosen_region)
+    print(f"🌍 Starting redeployment process to {chosen_region}")
 
-    # ✅ Case 1: No instances are currently running
+    # Case 1: No instances are currently running
     if not deployments:
         print("\nℹ️  No instance deployed yet.")
-        update_tfvars(best_region)
-        run_terraform()  # ✅ Now logs only to a file
+        update_tfvars(chosen_region)
+        run_terraform(chosen_region)
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
@@ -350,8 +363,8 @@ def deploy():
                 print(
                     f"✅ Deployment complete! New instance at: http://{instance_ip}")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(instance_ip, MYAPP_DOMAIN,
-                                      HOSTED_ZONE_ID, DNS_TTL)
+                    update_dns_record(
+                        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
             else:
@@ -361,21 +374,22 @@ def deploy():
             print("❌ Failed to retrieve instance details. Check Terraform outputs.")
         return
 
-    # ✅ Case 2: At least one instance is running, but a lower-carbon region is available
+    # Case 2: At least one instance is running, but a lower-carbon region is available
     current_best_region = min(
-        deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
-    )
+        deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r]))
     current_best_friendly = REGION_FRIENDLY_NAMES.get(
         current_best_region, current_best_region)
     print(
         f"\nℹ️  Current region with the lowest intensity among deployed: {current_best_region} ({current_best_friendly})")
 
-    if current_best_region != best_region:
-        print(f"🌱 A lower carbon region is available: {best_region} ({best_friendly}) "
-              f"(Currently: {current_best_region} ({current_best_friendly}))")
+    if current_best_region != chosen_region:
+        print(
+            f"🌱 A lower carbon region is available: {chosen_region} ({friendly}) "
+            f"(Currently: {current_best_region} ({current_best_friendly}))"
+        )
 
-        update_tfvars(best_region)
-        run_terraform()
+        update_tfvars(chosen_region)
+        run_terraform(chosen_region)
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
@@ -384,13 +398,13 @@ def deploy():
                 print(
                     f"✅ Redeployment complete! New instance at: http://{instance_ip}")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(instance_ip, MYAPP_DOMAIN,
-                                      HOSTED_ZONE_ID, DNS_TTL)
-                # ✅ Terminate old instance(s)
-                for region, instance_ids in deployments.items():
-                    if region != best_region:
-                        for instance_id in instance_ids:
-                            terminate_instance(instance_id, region)
+                    update_dns_record(
+                        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+                # Terminate old instance(s)
+                for reg, instance_ids in deployments.items():
+                    if reg != chosen_region:
+                        for inst_id in instance_ids:
+                            terminate_instance(inst_id, reg)
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Aborting old-instance termination.")
