@@ -171,9 +171,9 @@ def terminate_instance(instance_id: str, region: str):
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"✅ Started termination of {instance_id} in {region}.")
+        print(f"⏳ Started termination of {instance_id} in {region}.")
         log_message(
-            f"Successfully terminated of {instance_id} in {region}.\n",
+            f"Started termination of {instance_id} in {region}.\n",
             region=region
         )
     else:
@@ -200,7 +200,7 @@ def update_tfvars(region: str):
 
     friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
     print(
-        f"✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
+        f"\n✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
     log_message(
         f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}\n",
         region=region
@@ -208,7 +208,9 @@ def update_tfvars(region: str):
 
 
 def run_terraform(deploy_region):
-    print(f"🔄 Running Terraform deployment in {deploy_region}...")
+    friendly_region = REGION_FRIENDLY_NAMES.get(deploy_region, deploy_region)
+    print(
+        f"\n🔄 Running Terraform deployment in {deploy_region} ({friendly_region})...")
     log_message(
         f"🔄 Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
@@ -255,7 +257,7 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
         try:
             response = requests.get(url, timeout=3)
             if response.status_code == 200:
-                print(f"✅ HTTP check succeeded for {url}")
+                print(f"✅ HTTP check succeeded for {url} !\n")
                 return True
         except requests.exceptions.RequestException as e:
             logging.debug(f"HTTP request exception for {url}: {e}")
@@ -360,7 +362,7 @@ def deploy():
 
     # CASE 1: No instances are currently running
     if not deployments:
-        print("\nℹ️  No instance deployed yet.\n")
+        print("\nℹ️  No instance deployed yet. Starting fresh deployment...")
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
@@ -377,7 +379,7 @@ def deploy():
                     print(
                         f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n")
                     print(
-                        f"✅ Deployment complete! New instance at: http://{MYAPP_DOMAIN}.")
+                        f"✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -396,8 +398,8 @@ def deploy():
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly} !\n"
-            f"(Currently: {chosen_region} ({friendly}))\n"
+            f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly}) !\n"
+            f"Currently: {chosen_region} ({friendly}).\n"
         )
 
         update_tfvars(chosen_region)
@@ -407,11 +409,13 @@ def deploy():
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
-                print(
-                    f"✅ Redeployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+                print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
+                time.sleep(DNS_TTL)
+                print(
+                    f"\n✅ Redeployment complete! Application available at: http://{MYAPP_DOMAIN}.\n")
                 # Terminate old instance(s)
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:

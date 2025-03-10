@@ -168,9 +168,9 @@ def terminate_instance(instance_id: str, region: str):
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"✅ Started termination of {instance_id} in {region}.")
+        print(f"⏳ Started termination of {instance_id} in {region}.")
         log_message(
-            f"Successfully terminated {instance_id} in {region}.\n", region=region)
+            f"Started terminated {instance_id} in {region}.\n", region=region)
     else:
         print(
             f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
@@ -194,7 +194,7 @@ def update_tfvars(region: str):
 
     friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
     print(
-        f"✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}")
+        f"✅ Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}.\n")
     log_message(
         f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}\n",
         region=region
@@ -202,7 +202,9 @@ def update_tfvars(region: str):
 
 
 def run_terraform(deploy_region):
-    print(f"🔄 Running Terraform deployment in {deploy_region}...")
+    friendly_region = REGION_FRIENDLY_NAMES.get(deploy_region, deploy_region)
+    print(
+        f"🔄 Running Terraform deployment in {deploy_region} ({friendly_region})...")
     log_message(
         f"🔄 Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
@@ -268,7 +270,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
     print(
-        f"Updating DNS record {domain} → {new_ip}... this may take a few minutes.")
+        f"\nUpdating DNS record {domain} → {new_ip}... this may take a few minutes.")
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
@@ -373,8 +375,7 @@ def deploy():
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 A lower carbon region is available: {chosen_region} ({friendly}) "
-            f"(Currently: {current_best_region} ({current_best_friendly}))\n"
+            f"🌱 A lower carbon region is available: {chosen_region} ({friendly})! Current: {current_best_region} ({current_best_friendly}).\n"
         )
 
         update_tfvars(chosen_region)
@@ -387,8 +388,10 @@ def deploy():
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...\n")
+                    time.sleep(DNS_TTL)
                     print(
-                        f"✅ Redeployment complete! New instance at: http://{MYAPP_DOMAIN}.\n")
+                        f"✅ Redeployment complete! New instance available at: http://{MYAPP_DOMAIN}.\n")
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:
