@@ -132,7 +132,7 @@ def get_old_instances(region: str):
         return instances or []
     except subprocess.CalledProcessError as e:
         log_message(
-            f"❌ Error fetching instances in {region}: {e}",
+            f"Error fetching instances in {region}: {e}",
             region=region,
             level="error"
         )
@@ -157,7 +157,7 @@ def check_existing_deployments():
 def terminate_instance(instance_id: str, region: str):
     """Terminate an EC2 instance in the specified AWS region with reduced output."""
     log_message(
-        f"🛑 Terminating old instance {instance_id} in {region}...", region=region)
+        f"Terminating old instance {instance_id} in {region}...", region=region)
 
     cmd = [
         "aws", "ec2", "terminate-instances",
@@ -171,7 +171,7 @@ def terminate_instance(instance_id: str, region: str):
     if result.returncode == 0:
         print(f"✅ Started termination {instance_id} in {region}.")
         log_message(
-            f"✅ Successfully terminated {instance_id} in {region}",
+            f"Successfully terminated {instance_id} in {region}.\n",
             region=region
         )
     else:
@@ -212,11 +212,11 @@ def run_terraform(deploy_region):
     """
     print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
     log_message(
-        f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}",
+        f"Running Terraform deployment in: {TERRAFORM_DIR}",
         region=deploy_region
     )
 
-    with open("logs/terraform.log", "a") as log_file:
+    with open("/logs/terraform.log", "a") as log_file:
         subprocess.run(["terraform", "init", "-input=false", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
         subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
@@ -280,7 +280,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"🔄 Updating DNS record {domain} → {new_ip}", region=region)
+    log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -312,11 +312,11 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     if ret.returncode == 0:
         print(f"✅ Successfully updated DNS record {domain} to {new_ip}")
         log_message(
-            f"Successfully updated DNS record {domain} to {new_ip}", region=region)
+            f"Successfully updated DNS record {domain} to {new_ip}.\n", region=region)
     else:
-        print(f"❌ Failed to update DNS record {domain}")
+        print(f"❌ Failed to update DNS record {domain}.")
         log_message(
-            f"Failed to update DNS record {domain}", region=region, level="error")
+            f"Failed to update DNS record {domain}.\n", region=region, level="error")
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -339,7 +339,7 @@ def deploy():
     # If an instance is already running in the lowest-carbon region, do nothing
     if chosen_region in deployments:
         log_message(
-            f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).",
+            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).",
             region=chosen_region
         )
         print(
@@ -347,7 +347,7 @@ def deploy():
         return
 
     log_message(
-        f"Starting redeployment process to {chosen_region}", region=chosen_region)
+        f"Starting redeployment process to {chosen_region}...", region=chosen_region)
     print(f"🌍 Starting redeployment process to {chosen_region}")
 
     # Case 1: No instances are currently running
@@ -358,10 +358,10 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 print(
-                    f"✅ Deployment complete! New instance at: http://{instance_ip}")
+                    f"✅ Deployment complete! New instance at: http://{instance_ip}.")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
@@ -393,10 +393,10 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 print(
-                    f"✅ Redeployment complete! New instance at: http://{instance_ip}")
+                    f"✅ Redeployment complete! New instance at: http://{instance_ip}.")
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
@@ -407,9 +407,9 @@ def deploy():
                             terminate_instance(inst_id, reg)
             else:
                 print(
-                    "❌ The new instance is not responding on HTTP. Aborting old-instance termination.")
+                    "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
         else:
-            print("✅ No change needed - you're already in the greenest region.")
+            print("✅ No change needed - you're already in the greenest region.\n")
 
 
 if __name__ == "__main__":
