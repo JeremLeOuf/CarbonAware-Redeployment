@@ -186,6 +186,48 @@ def terminate_instance(instance_id: str, region: str):
         )
 
 
+def find_old_sgs(region: str):
+    """
+    Return a list of SG IDs matching 'myapp_sg_' in the given region.
+    """
+    try:
+        cmd = [
+            "aws", "ec2", "describe-security-groups",
+            "--region", region,
+            "--filters", "Name=group-name,Values=myapp_sg_*",
+            "--query", "SecurityGroups[].GroupId",
+            "--output", "json", "--no-cli-pager"
+        ]
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True)
+        return json.loads(result.stdout)  # list of SG IDs
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to find old security groups in {region}. Error: {e}")
+        return []
+
+
+def remove_security_groups(region: str):
+    """
+    Find and delete old 'myapp_sg_<suffix>' groups in the specified region.
+    """
+    sg_ids = find_old_sgs(region)
+    for sg_id in sg_ids:
+        cmd = [
+            "aws", "ec2", "delete-security-group",
+            "--group-id", sg_id,
+            "--region", region,
+            "--no-cli-pager",
+            "--output", "text"
+        ]
+        print(f"🛑 Deleting SG {sg_id} in region {region}...")
+        ret = subprocess.run(cmd, capture_output=True, text=True)
+        if ret.returncode == 0:
+            print(f"✅ Deleted security group {sg_id} in {region}.")
+        else:
+            print(
+                f"❌ Failed to delete {sg_id} in {region}. Error: {ret.stderr}")
+
+
 def update_tfvars(region: str):
     """
     Overwrite terraform.tfvars with the chosen region + a new deployment_id
@@ -421,6 +463,8 @@ def deploy():
                     if reg != chosen_region:
                         for inst_id in instance_ids:
                             terminate_instance(inst_id, reg)
+                            remove_security_groups(reg)
+
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
