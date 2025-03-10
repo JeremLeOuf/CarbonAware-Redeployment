@@ -281,6 +281,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
+    print(f"Updating DNS record {domain} → {new_ip}", region=region)
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
@@ -310,9 +311,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     ]
     ret = subprocess.run(cmd, capture_output=True, text=True)
 
-    if ret.returncode == 0:
-        pass
-    else:
+    if ret.returncode != 0:
         print(ret.stderr)
         print(f"❌ Failed to update DNS record {domain}.")
         log_message(
@@ -366,8 +365,7 @@ def deploy():
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
 
-        instance_ip = get_terraform_output("instance_public_ip")
-        if instance_ip:
+        if instance_ip := get_terraform_output("instance_public_ip"):
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
@@ -394,7 +392,7 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️  Current region with the lowest intensity among deployed: {current_best_region} ({current_best_friendly})")
+        f"\nℹ️  Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
@@ -405,8 +403,7 @@ def deploy():
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
 
-        instance_ip = get_terraform_output("instance_public_ip")
-        if instance_ip:
+        if instance_ip := get_terraform_output("instance_public_ip"):
             print(
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
