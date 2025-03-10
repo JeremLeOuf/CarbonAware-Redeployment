@@ -25,6 +25,8 @@ DNS_TTL = 60
 # -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).parent.resolve()
 TERRAFORM_DIR = SCRIPT_DIR / "terraform"
+LOGS_DIR = Path(__file__).parent / "logs"
+LOGS_DIR.mkdir(exist_ok=True)  # Create the logs dir if missing
 
 # -------------------------------------------------------------------
 # AWS Regions + Mapping to Electricity Map Zones
@@ -204,27 +206,29 @@ def update_tfvars(region: str):
         region=region
     )
 
+LOGS_DIR = Path(__file__).parent / "logs"
+LOGS_DIR.mkdir(exist_ok=True)  # Create logs dir if missing
 
 def run_terraform(deploy_region):
-    """
-    Run Terraform apply with reduced verbosity and log to file,
-    referencing the region so logs don't fail.
-    """
     print(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}")
-    log_message(
-        f"Running Terraform deployment in: {TERRAFORM_DIR}",
-        region=deploy_region
-    )
+    log_message(f"🔄 Running Terraform deployment in: {TERRAFORM_DIR}", region=deploy_region)
 
-    with open("/logs/terraform.log", "a") as log_file:
-        subprocess.run(["terraform", "init", "-input=false", "-no-color"],
-                       cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
-        subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
-                       cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file)
+    # Use a local path for terraform.log in your logs directory
+    log_file_path = LOGS_DIR / "terraform.log"
+
+    # You can do extra check or just rely on LOGS_DIR.mkdir(exist_ok=True)
+    with open(log_file_path, "a") as log_file:
+        subprocess.run(
+            ["terraform", "init", "-input=false", "-no-color"],
+            cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file
+        )
+        subprocess.run(
+            ["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
+            cwd=TERRAFORM_DIR, stdout=log_file, stderr=log_file
+        )
 
     log_message("Terraform deployment complete!", region=deploy_region)
     print("✅ Terraform deployment complete!")
-
 
 def get_terraform_output(output_var: str):
     """
@@ -314,6 +318,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         log_message(
             f"Successfully updated DNS record {domain} to {new_ip}.\n", region=region)
     else:
+        print(ret.stderr)
         print(f"❌ Failed to update DNS record {domain}.")
         log_message(
             f"Failed to update DNS record {domain}.\n", region=region, level="error")
