@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 import tempfile
 import logging
-import timeit
 
 # -------------------------------------------------------------------
 # Load environment variables (from .env or system environment)

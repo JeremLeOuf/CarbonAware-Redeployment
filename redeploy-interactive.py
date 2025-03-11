@@ -1,4 +1,3 @@
-import timeit
 import subprocess
 import os
 import requests
