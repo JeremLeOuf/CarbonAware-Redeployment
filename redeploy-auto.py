@@ -466,9 +466,9 @@ def deploy():
             return
 
         print(
-            f"\nℹ️ Among currently running instances, the best deployed region is '{current_best_region}' ({current_best_friendly}), "
-            f"but the lowest-carbon region overall is '{chosen_region}' ({friendly}). Proceeding with redeployment..."
-        )
+            f"\nℹ️ Current instance is deployed in '{current_best_region}' ({current_best_friendly}).")
+        print(f"The lowest-carbon region currently available is '{chosen_region}' ({friendly}). Proceeding with redeployment..."
+              )
     else:
         print("\nℹ️ No running instances found. Proceeding with deployment to the best region.")
 
