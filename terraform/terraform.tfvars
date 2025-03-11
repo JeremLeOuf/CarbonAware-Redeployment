@@ -1,2 +1,2 @@
-aws_region = "eu-west-2"
-deployment_id = "1741730218"
+aws_region = "eu-central-1"
+deployment_id = "1741731053"
