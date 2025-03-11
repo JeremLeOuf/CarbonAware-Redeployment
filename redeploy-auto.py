@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import tempfile
 import logging
+import timeit
 
 # -------------------------------------------------------------------
 # Load environment variables (from .env or system environment)
@@ -442,7 +443,7 @@ def deploy():
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                     print("✅ Redeployment process complete.")
                     log_message(
-                        "Redeployment process complete.\n\n================\n\n", region=chosen_region)
+                        "Redeployment process complete.", region=chosen_region)
 
             else:
                 print(
@@ -502,7 +503,10 @@ def deploy():
 
             print("✅ Redeployment process complete.")
             log_message(
-                "Redeployment process complete.\n\n================\n\n", region=chosen_region)
+                "Redeployment process complete.", region=chosen_region)
+            log_message(
+                f"Execution time: {execution_time:.4f} seconds.\n\n================================================\n\n",
+            )
         else:
             print(
                 "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
@@ -511,4 +515,8 @@ def deploy():
 
 
 if __name__ == "__main__":
-    deploy()
+    execution_time = timeit.timeit(deploy, number=1)
+    print(f"Execution time: {execution_time:.2f} seconds.")
+    log_message(
+        f"Execution time: {execution_time:.2f} seconds.\n\n================================================\n", region="N/A"
+    )
