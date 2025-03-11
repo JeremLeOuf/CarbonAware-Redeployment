@@ -421,8 +421,7 @@ def deploy(execution_time=None):
     # If an instance is already running in the chosen region, do nothing
     if chosen_region in deployments:
         log_message(
-            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).\nExecution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n\n", region=chosen_region
-        )
+            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).\n", region=chosen_region)
         print(
             f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
         return
@@ -454,7 +453,7 @@ def deploy(execution_time=None):
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                     print("✅ Redeployment process complete.")
                     log_message(
-                        f"Redeployment process complete.\nExecution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n\n", region=chosen_region)
+                        "Redeployment process complete.\n", region=chosen_region)
 
             else:
                 print(
@@ -509,8 +508,7 @@ def deploy(execution_time=None):
                         remove_security_groups(reg)
 
             print("✅ Redeployment process complete.")
-            log_message(
-                f"Redeployment process complete.\nExecution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n\n", region=chosen_region)
+            log_message("Redeployment process complete.", region=chosen_region)
         else:
             print(
                 "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
@@ -534,3 +532,6 @@ def run_main():
 if __name__ == "__main__":
     execution_time = run_main()
     print(f"Execution time: {execution_time:.2f} seconds.")
+    log_message(
+        f"Execution time: {execution_time:.2f} seconds.\n\n============================================================================================================================================\n", region="N/A"
+    )

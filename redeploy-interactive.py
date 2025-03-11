@@ -276,7 +276,7 @@ def update_tfvars(region: str):
     print(
         f"\n✅ Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}")
     log_message(
-        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}",
+        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}\n",
         region=region
     )
 
@@ -297,7 +297,7 @@ def run_terraform(deploy_region):
             cwd=TERRAFORM_DIR, stdout=log_file
         )
         subprocess.run(
-            ["terraform", "apply", "-auto-approve", "-compact-warnings",
+            ["terraform", "apply", "-auto-approve",
              "-no-color"],
             cwd=TERRAFORM_DIR, stdout=log_file
         )
@@ -359,7 +359,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"Updating DNS A record {domain} to {new_ip}\n", region=region)
+    log_message(f"Updating DNS A record {domain} to {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -448,8 +448,17 @@ def deploy():
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns(
-                        instance_ip, chosen_region, friendly)
+                    update_dns_record(
+                        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+                    print(
+                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
+                    time.sleep(30)
+                    print(
+                        f"✅ DNS record updated!\nℹ️ Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                    print(
+                        f"✅ Redeployment process complete.")
+                    log_message(
+                        f"Redeployment process complete.\n", region=chosen_region)
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -463,8 +472,8 @@ def deploy():
     current_best_friendly = REGION_FRIENDLY_NAMES.get(
         current_best_region, current_best_region)
 
-    # print(
-    #     f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
+    print(
+        f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
@@ -492,7 +501,8 @@ def deploy():
                         for inst_id in instance_ids:
                             terminate_instance(inst_id, reg)
                             remove_security_groups(reg)
-                            print("✅ Redeployment process complete.")
+                            print(
+                                f"✅ Redeployment process complete.")
                             log_message(
                                 f"Redeployment process complete.\n", region=chosen_region)
 
@@ -503,23 +513,5 @@ def deploy():
             print("✅ No change needed - you're already in the greenest region.")
 
 
-# TODO Rename this here and in `deploy`
-def update_dns(instance_ip, chosen_region, friendly):
-    update_dns_record(
-        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-    print(
-        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
-    time.sleep(30)
-    print(
-        f"✅ DNS record updated!\nℹ️ Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
-    print("✅ Redeployment process complete.")
-    log_message(
-        f"Redeployment process complete.\n", region=chosen_region)
-
-
 if __name__ == "__main__":
-    execution_time = timeit.timeit(deploy, number=1)
-    print(f"Execution time: {execution_time:.2f} seconds.")
-    log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n============================================================================================================================================\n", region="N/A"
-    )
+    deploy()
