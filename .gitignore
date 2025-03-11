@@ -8,15 +8,12 @@ __pycache__/
 venv/
 env/
 
-# # Logs
-logs/terraform.log
-logs/redeploy.log
+# Logs
+# logs/terraform.log
+# logs/redeploy.log
 
 # Terraform
 .terraform/
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/terraform.tfvars
 *.tfvars.json
 .terraform.lock.hcl
 
