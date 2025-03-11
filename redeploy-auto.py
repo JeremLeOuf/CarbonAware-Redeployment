@@ -295,7 +295,7 @@ def run_terraform(deploy_region):
     with open(log_file_path, "a") as log_file:
         subprocess.run(["terraform", "init", "-upgrade", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
-        subprocess.run(["terraform", "apply", "-auto-approve", "-no-color"],
+        subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
     log_message("Terraform deployment complete!", region=deploy_region)
@@ -388,6 +388,13 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         log_message(
             f"Failed to update DNS record {domain}.", region=region, level="error")
 
+
+def update_dns(instance_ip, chosen_region, arg2, arg3):
+    update_dns_record(
+        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
+    print(f"{arg2}{MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}{arg3}")
+    time.sleep(DNS_TTL)
+
 # -------------------------------------------------------------------
 # Main Deployment Logic
 # -------------------------------------------------------------------
@@ -432,11 +439,12 @@ def deploy():
                 f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(
-                        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(
-                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL} for DNS to fully propagate...")
-                    time.sleep(DNS_TTL)
+                    update_dns(
+                        instance_ip,
+                        chosen_region,
+                        '⏳ Updating DNS A record ',
+                        ' for DNS to fully propagate...',
+                    )
                     print(
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
@@ -452,27 +460,22 @@ def deploy():
             print("❌ Failed to retrieve instance details. Check Terraform outputs.")
         return
 
-    # Case 2: Some instances exist in other regions, but the new region is better
-    if deployments:
-        current_best_region = min(
-            deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
-        )
-        current_best_friendly = REGION_FRIENDLY_NAMES.get(
-            current_best_region, current_best_region)
+    current_best_region = min(
+        deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
+    )
+    current_best_friendly = REGION_FRIENDLY_NAMES.get(
+        current_best_region, current_best_region)
 
-        if current_best_region == chosen_region:
-            print(
-                f"\n✅ The currently deployed region '{current_best_region}' ({current_best_friendly}) already has the lowest carbon intensity. No redeployment needed.")
-            # Skip redeployment if it's already in the lowest-carbon region.
-            return
-
+    if current_best_region == chosen_region:
         print(
-            f"\nℹ️ Current instance is deployed in '{current_best_region}' ({current_best_friendly}).")
-        print(f"The lowest-carbon region currently available is '{chosen_region}' ({friendly}). Proceeding with redeployment..."
-              )
-    else:
-        print("\nℹ️ No running instances found. Proceeding with deployment to the best region.")
+            f"\n✅ The currently deployed region '{current_best_region}' ({current_best_friendly}) already has the lowest carbon intensity. No redeployment needed.")
+        # Skip redeployment if it's already in the lowest-carbon region.
+        return
 
+    print(
+        f"\nℹ️ Current instance is deployed in '{current_best_region}' ({current_best_friendly}).")
+    print(f"The lowest-carbon region currently available is '{chosen_region}' ({friendly}). Proceeding with redeployment...\n"
+          )
     # Proceed with redeployment
     print(
         f"🌱 Redeploying to '{chosen_region}' ({friendly})... (Current: '{current_best_region}' ({current_best_friendly}))\n")
@@ -486,11 +489,12 @@ def deploy():
 
         if wait_for_http_ok(instance_ip, 80):
             if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                update_dns_record(instance_ip, MYAPP_DOMAIN,
-                                  HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                print(
-                    f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}s for DNS to fully propagate...")
-                time.sleep(DNS_TTL)
+                update_dns(
+                    instance_ip,
+                    chosen_region,
+                    '⏳ Updating DNS A record for ',
+                    's for DNS to fully propagate...',
+                )
                 print(
                     f"✅ DNS A record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
 
