@@ -422,8 +422,9 @@ def deploy():
     if chosen_region in deployments:
         log_message(
             f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).",
-            region=chosen_region
-        )
+            region=chosen_region)
+        log_message(f"Execution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n\n", region=chosen_region
+                    )
         print(
             f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
         return
