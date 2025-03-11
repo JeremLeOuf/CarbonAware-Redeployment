@@ -289,7 +289,7 @@ def run_terraform(deploy_region):
 
     remove_security_groups(deploy_region)
 
-    print("⏳ Running Terraform init and apply. This may take a few minutes...")
+    print("⏳ Applying Terraform configuration. This may take a few minutes...")
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a") as log_file:
@@ -404,7 +404,7 @@ def update_dns(instance_ip, chosen_region, arg2, arg3):
 # -------------------------------------------------------------------
 
 
-def deploy(execution_time=None):
+def deploy():
     """
     Automates instance deployment based on carbon intensity,
     fully non-interactive. Automatically uses the lowest-carbon region,
@@ -420,18 +420,16 @@ def deploy(execution_time=None):
 
     # If an instance is already running in the chosen region, do nothing
     if chosen_region in deployments:
-        log_message(
-            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).\n", region=chosen_region)
         print(
-            f"✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
+            f"\n✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
+        log_message(
+            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).", region=chosen_region)
         return
 
     # Case 1: No instances are currently running
     if not deployments:
         print(
             f"\nℹ️ No instance deployed yet.\n⏳ Deploying to {chosen_region}...\n")
-        log_message(
-            f"Starting new deployment to {chosen_region}...", region=chosen_region)
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
@@ -448,7 +446,7 @@ def deploy(execution_time=None):
                         ' for DNS to fully propagate...',
                     )
                     print(
-                        f"⏳ Started termination of {instance_ip} in {reg}...")
+                        f"⏳ Started termination of {instance_ip} in {chosen_region}...")
                     print(
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                     print("✅ Redeployment process complete.")
@@ -529,4 +527,4 @@ if __name__ == "__main__":
     execution_time = run_main()
     print(f"Execution time: {execution_time:.2f} seconds.")
     log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n" + "=" * 150, region="TIMER")
+        f"Execution time: {execution_time:.2f} seconds.\n\n" + "=" * 116 + "\n", region="TIMER")
