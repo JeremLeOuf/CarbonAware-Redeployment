@@ -159,9 +159,6 @@ def terminate_instance(instance_id: str, region: str):
     Terminate an EC2 instance in the specified AWS region
     and block until the instance is fully terminated.
     """
-    log_message(
-        f"Terminating old instance {instance_id} in {region}...", region=region
-    )
 
     # Step 1: Terminate the instance
     terminate_cmd = [
@@ -175,8 +172,11 @@ def terminate_instance(instance_id: str, region: str):
         terminate_cmd, capture_output=True, text=True)
 
     if terminate_result.returncode == 0:
+        print(
+            f"Terminating instance {instance_id} in {region}..."
+        )
         log_message(
-            f"Started termination of {instance_id} in {region}...",
+            f"Terminating instance {instance_id} in {region}...",
             region=region
         )
     else:
@@ -189,7 +189,7 @@ def terminate_instance(instance_id: str, region: str):
             f"Error: {terminate_result.stderr}",
             region=region, level="error"
         )
-        return  # bail out early if we couldn’t even start termination
+        return
 
     # Step 2: Wait until instance is fully terminated
     print("ℹ️ Waiting for old instance to fully terminate...")
