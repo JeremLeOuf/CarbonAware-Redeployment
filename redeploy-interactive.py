@@ -108,7 +108,7 @@ def find_best_region() -> str:
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     print(
-        f"\n⚡ Recommended AWS Region (lowest carbon intensity): {best_region} ({best_friendly})")
+        f"\n⚡ Recommended AWS Region (lowest carbon intensity): {best_region} ({best_friendly}).")
     return best_region
 
 # -------------------------------------------------------------------
@@ -220,6 +220,12 @@ def remove_security_groups(region: str):
             "--output", "text"
         ]
         print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'")
+        else:
+            print(
+                f"❌ Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}")
 
 
 def update_tfvars(region: str):
@@ -265,7 +271,7 @@ def run_terraform(deploy_region):
         )
 
     log_message("Terraform deployment complete!", region=deploy_region)
-    print("✅ Terraform deployment complete!\n")
+    print("\n✅ Terraform deployment complete!\n")
 
 
 def get_terraform_output(output_var: str):
@@ -400,7 +406,7 @@ def deploy():
     # CASE 1: No instances are currently running
     if not deployments:
         print(
-            f"\nℹ️  No instance deployed yet. Starting fresh deployment in '{chosen_region}'...")
+            f"ℹ️  No instance deployed yet. Starting fresh deployment in '{chosen_region}'...")
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)

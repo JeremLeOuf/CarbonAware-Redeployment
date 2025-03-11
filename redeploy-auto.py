@@ -108,7 +108,7 @@ def find_best_region() -> str:
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     print(
-        f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' ({best_friendly})")
+        f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' ({best_friendly}).")
     return best_region
 
 # -------------------------------------------------------------------
@@ -148,33 +148,70 @@ def check_existing_deployments():
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
-                f"\n✅ Found running instance(s) in '{region}' ({friendly_region}): {instance_ids}")
+                f"\n✅ Found running instance(s) in '{region}' ({friendly_region}): {instance_ids}.")
             deployments[region] = instance_ids
     return deployments
 
 
 def terminate_instance(instance_id: str, region: str):
-    """Terminate an EC2 instance in the specified AWS region with reduced output."""
+    """
+    Terminate an EC2 instance in the specified AWS region
+    and block until the instance is fully terminated.
+    """
     log_message(
-        f"Terminating old instance {instance_id} in {region}...", region=region)
+        f"Terminating old instance {instance_id} in {region}...", region=region
+    )
 
-    cmd = [
+    # Step 1: Terminate the instance
+    terminate_cmd = [
         "aws", "ec2", "terminate-instances",
         "--instance-ids", instance_id,
         "--region", region,
         "--no-cli-pager",
         "--output", "text"
     ]
+    terminate_result = subprocess.run(
+        terminate_cmd, capture_output=True, text=True)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
+    if terminate_result.returncode == 0:
         log_message(
-            f"Started termination of {instance_id} in {region}...\n", region=region)
+            f"Started termination of {instance_id} in {region}...\n",
+            region=region
+        )
     else:
         print(
-            f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
+            f"❌ Failed to terminate instance {instance_id} in {region}. "
+            f"Error: {terminate_result.stderr}"
+        )
         log_message(
-            f"Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}",
+            f"Failed to terminate instance {instance_id} in {region}. "
+            f"Error: {terminate_result.stderr}",
+            region=region, level="error"
+        )
+        return  # bail out early if we couldn’t even start termination
+
+    # Step 2: Wait until instance is fully terminated
+    print("ℹ️  Waiting for old instance to fully terminate...")
+    wait_cmd = [
+        "aws", "ec2", "wait", "instance-terminated",
+        "--instance-ids", instance_id,
+        "--region", region
+    ]
+    wait_result = subprocess.run(wait_cmd, capture_output=True, text=True)
+    if wait_result.returncode == 0:
+        print(f"✅ Instance {instance_id} in {region} is fully terminated.\n")
+        log_message(
+            f"Instance {instance_id} in {region} is fully terminated.\n",
+            region=region
+        )
+    else:
+        print(
+            f"❌ Wait for instance {instance_id} termination failed. "
+            f"Error: {wait_result.stderr}"
+        )
+        log_message(
+            f"Wait for instance {instance_id} termination failed. "
+            f"Error: {wait_result.stderr}",
             region=region, level="error"
         )
 
@@ -212,7 +249,13 @@ def remove_security_groups(region: str):
             "--no-cli-pager",
             "--output", "text"
         ]
-        subprocess.run(cmd, capture_output=True, text=True)
+        print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'.\n")
+        else:
+            print(
+                f"❌ Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}")
 
 
 def update_tfvars(region: str):
@@ -239,11 +282,13 @@ def update_tfvars(region: str):
 def run_terraform(deploy_region):
     friendly_region = REGION_FRIENDLY_NAMES.get(deploy_region, deploy_region)
     print(
-        f"🔄 Running Terraform deployment in '{deploy_region}' ({friendly_region})...\n")
+        f"🔄 Running Terraform deployment in '{deploy_region}' ({friendly_region})...")
     log_message(
         f"Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
     remove_security_groups(deploy_region)
+
+    print("⏳ Running Terraform init and apply. This may take a few minutes...")
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a") as log_file:
@@ -253,7 +298,7 @@ def run_terraform(deploy_region):
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
     log_message("Terraform deployment complete!", region=deploy_region)
-    print("✅ Terraform deployment complete!\n")
+    print("\n✅ Terraform deployment complete!\n")
 
 
 def get_terraform_output(output_var: str):
@@ -292,7 +337,7 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
             f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
         time.sleep(interval)
 
-    print(f"❌ Gave up waiting for a successful HTTP response from {url}")
+    print(f"❌ Gave up waiting for a successful HTTP response from {url}.")
     log_message(
         f"Gave up waiting for a successful HTTP response from {url}", region="N/A", level="error")
     return False
@@ -306,7 +351,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
+    log_message(f"Updating DNS A record {domain} to {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -382,7 +427,7 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ids} ({instance_ip})...")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
@@ -393,7 +438,7 @@ def deploy():
                     print(
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
-                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated!\nℹ️  Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
 
             else:
                 print(
@@ -411,7 +456,7 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️  Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly})")
+        f"\nℹ️  Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly}).")
 
     if current_best_region != chosen_region:
         print(
@@ -423,15 +468,16 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ids} ({instance_ip})...")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(f"⏳ Waiting 30s for DNS to propagate...\n")
+                    print(
+                        f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
                     time.sleep(30)
                     print(
-                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS A record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
 
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
