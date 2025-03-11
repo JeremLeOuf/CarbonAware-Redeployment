@@ -31,7 +31,7 @@ resource "aws_security_group" "myapp_sg" {
   lifecycle {
     create_before_destroy = true
   }
-  
+
   ingress {
     description = "HTTP"
     from_port   = 80

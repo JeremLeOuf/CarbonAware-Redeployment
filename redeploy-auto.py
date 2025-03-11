@@ -214,6 +214,8 @@ def remove_security_groups(region: str):
         ]
         print(f"🛑 Deleting SG {sg_id} in region {region}...")
         ret = subprocess.run(cmd, capture_output=True, text=True)
+        if ret.returncode == 0:
+            print(f"✅ Deleted security group {sg_id} in {region}.\n")
 
 
 def update_tfvars(region: str):
@@ -242,7 +244,9 @@ def run_terraform(deploy_region):
     print(
         f"🔄 Running Terraform deployment in {deploy_region} ({friendly_region})...")
     log_message(
-        f"🔄 Running Terraform deployment in {deploy_region}...", region=deploy_region)
+        f"Running Terraform deployment in {deploy_region}...", region=deploy_region)
+
+    remove_security_groups(deploy_region)
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a") as log_file:
