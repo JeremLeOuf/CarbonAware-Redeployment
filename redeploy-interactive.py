@@ -108,7 +108,7 @@ def find_best_region() -> str:
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     print(
-        f"\n⚡ Recommended AWS Region (lowest carbon): {best_region} ({best_friendly})")
+        f"\n⚡ Recommended AWS Region (lowest carbon intensity): {best_region} ({best_friendly})")
     return best_region
 
 # -------------------------------------------------------------------
@@ -171,9 +171,9 @@ def terminate_instance(instance_id: str, region: str):
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"⏳ Started termination of {instance_id} in {region}.")
+        print(f"\n⏳ Started termination of '{instance_id}' in '{region}'...")
         log_message(
-            f"Started termination of {instance_id} in {region}.\n",
+            f"Started termination of instance '{instance_id}' in '{region}'.\n",
             region=region
         )
     else:
@@ -219,10 +219,7 @@ def remove_security_groups(region: str):
             "--no-cli-pager",
             "--output", "text"
         ]
-        print(f"🛑 Deleting SG {sg_id} in region {region}...")
-        ret = subprocess.run(cmd, capture_output=True, text=True)
-        if ret.returncode == 0:
-            print(f"✅ Deleted security group {sg_id} in {region}.\n")
+        print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
 
 
 def update_tfvars(region: str):
@@ -324,7 +321,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
+    log_message(f"Updating DNS A record {domain} to {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -380,10 +377,10 @@ def deploy():
 
     if user_region_input in AWS_REGIONS.keys():
         chosen_region = user_region_input
-        print(f"\nUsing user-specified region: {chosen_region}")
+        print(f"\nUsing user-specified region: '{chosen_region}'\n")
     else:
         chosen_region = auto_region
-        print(f"\nUsing recommended region: {chosen_region}")
+        print(f"\nUsing recommended region: '{chosen_region}'")
 
     friendly = REGION_FRIENDLY_NAMES.get(chosen_region, chosen_region)
 
@@ -402,7 +399,8 @@ def deploy():
 
     # CASE 1: No instances are currently running
     if not deployments:
-        print("\nℹ️ No instance deployed yet. Starting fresh deployment...")
+        print(
+            f"\nℹ️  No instance deployed yet. Starting fresh deployment in '{chosen_region}'...")
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
@@ -415,10 +413,10 @@ def deploy():
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(
-                        f"⏳ Updating DNS record {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}s for DNS to propagate...")
-                    time.sleep(DNS_TTL)
+                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
+                    time.sleep(30)
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n ✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -433,12 +431,12 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
+        f"\nℹ️  Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly}) !\n"
-            f"\nℹ️ Currently deploying to: {chosen_region} ({friendly})."
+            f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly})!\n"
+            f"\nℹ️  Currently deploying to: {chosen_region} ({friendly})."
         )
 
         update_tfvars(chosen_region)
@@ -451,10 +449,10 @@ def deploy():
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
-                time.sleep(DNS_TTL)
+                print("⏳ Waiting 30s for DNS to fully propagate...")
+                time.sleep(30)
                 print(
-                    f"\n✅ Redeployment complete! Application available at: http://{MYAPP_DOMAIN}.\n")
+                    f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\nℹ️  Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                 # Terminate old instance(s)
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:

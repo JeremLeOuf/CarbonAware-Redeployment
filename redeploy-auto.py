@@ -108,7 +108,7 @@ def find_best_region() -> str:
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     print(
-        f"\n⚡ Recommended AWS Region (lowest carbon): {best_region} ({best_friendly})")
+        f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' ({best_friendly})")
     return best_region
 
 # -------------------------------------------------------------------
@@ -148,7 +148,7 @@ def check_existing_deployments():
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
-                f"\n✅ Found running instance(s) in {region} ({friendly_region}): {instance_ids}")
+                f"\n✅ Found running instance(s) in '{region}' ({friendly_region}): {instance_ids}")
             deployments[region] = instance_ids
     return deployments
 
@@ -212,10 +212,7 @@ def remove_security_groups(region: str):
             "--no-cli-pager",
             "--output", "text"
         ]
-        print(f"🛑 Deleting SG {sg_id} in region {region}...")
-        ret = subprocess.run(cmd, capture_output=True, text=True)
-        if ret.returncode == 0:
-            print(f"✅ Deleted security group {sg_id} in {region}.\n")
+        subprocess.run(cmd, capture_output=True, text=True)
 
 
 def update_tfvars(region: str):
@@ -242,7 +239,7 @@ def update_tfvars(region: str):
 def run_terraform(deploy_region):
     friendly_region = REGION_FRIENDLY_NAMES.get(deploy_region, deploy_region)
     print(
-        f"🔄 Running Terraform deployment in {deploy_region} ({friendly_region})...")
+        f"🔄 Running Terraform deployment in '{deploy_region}' ({friendly_region})...\n")
     log_message(
         f"Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
@@ -286,7 +283,7 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
         try:
             response = requests.get(url, timeout=3)
             if response.status_code == 200:
-                print(f"✅ HTTP check succeeded for {url}")
+                print(f"✅ HTTP check succeeded for {url} !\n")
                 return True
         except requests.exceptions.RequestException as e:
             logging.debug(f"HTTP request exception for {url}: {e}")
@@ -309,8 +306,6 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    print(
-        f"\nUpdating DNS record {domain} → {new_ip}... this may take a few minutes.")
     log_message(f"Updating DNS record {domain} → {new_ip}", region=region)
 
     change_batch = {
@@ -378,7 +373,7 @@ def deploy():
     # Case 1: No instances are currently running
     if not deployments:
         print(
-            f"\nℹ️ No instance deployed yet.\nDeploying to {chosen_region}...\n")
+            f"\nℹ️  No instance deployed yet.\n⏳ Deploying to {chosen_region}...\n")
         log_message(
             f"Starting new deployment to {chosen_region}...", region=chosen_region)
 
@@ -387,17 +382,18 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ids} ({instance_ip})...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
-                    time.sleep(DNS_TTL)
+                    print(
+                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
+                    time.sleep(30)
                     print(
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
-                        f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
 
             else:
                 print(
@@ -415,11 +411,11 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
+        f"\nℹ️  Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 Redeploying to {chosen_region} ({friendly})...\nCurrent: {current_best_region} ({current_best_friendly}).\n"
+            f"🌱 Redeploying to '{chosen_region}' ({friendly})... (Current: '{current_best_region}' ({current_best_friendly}))\n"
         )
 
         update_tfvars(chosen_region)
@@ -427,15 +423,16 @@ def deploy():
 
         if instance_ip := get_terraform_output("instance_public_ip"):
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
+                f"⏳ Checking HTTP availability on the new instance: {instance_ids} ({instance_ip})...")
             if wait_for_http_ok(instance_ip, 80):
                 if MYAPP_DOMAIN and HOSTED_ZONE_ID:
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...\n")
-                    time.sleep(DNS_TTL)
+                    print(f"⏳ Waiting 30s for DNS to propagate...\n")
+                    time.sleep(30)
                     print(
-                        f"✅ Redeployment complete! Application available at: http://{MYAPP_DOMAIN}.\n")
+                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:
