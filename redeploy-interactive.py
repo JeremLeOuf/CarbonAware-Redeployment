@@ -454,6 +454,10 @@ def deploy():
                     time.sleep(30)
                     print(
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                    print(
+                        f"✅ Redeployment process complete.")
+                    log_message(
+                        f"Redeployment process complete.\n", region=chosen_region)
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -496,6 +500,10 @@ def deploy():
                         for inst_id in instance_ids:
                             terminate_instance(inst_id, reg)
                             remove_security_groups(reg)
+                            print(
+                                f"✅ Redeployment process complete.")
+                            log_message(
+                                f"Redeployment process complete.\n", region=chosen_region)
 
             else:
                 print(
