@@ -242,6 +242,7 @@ def remove_security_groups(region: str):
     Find and delete old 'myapp_sg_<suffix>' groups in the specified region.
     """
     sg_ids = find_old_sgs(region)
+    print(f"\n⏳ Started deletion of SG '{sg_id}' in '{region}'...")
     for sg_id in sg_ids:
         cmd = [
             "aws", "ec2", "delete-security-group",
@@ -250,10 +251,9 @@ def remove_security_groups(region: str):
             "--no-cli-pager",
             "--output", "text"
         ]
-        print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
-            print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'")
+            print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'.\n")
         else:
             print(
                 f"❌ Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}")
