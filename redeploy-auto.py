@@ -522,7 +522,7 @@ def run_main():
     """Runs the main code and returns execution time."""
     start_time = time.perf_counter()
 
-    execution_time = None  # Ensure variable is initialized
+    execution_time = None
 
     # Run deployment logic and pass execution time later
     execution_time = time.perf_counter() - start_time
@@ -532,5 +532,5 @@ def run_main():
 
 
 if __name__ == "__main__":
-    execution_time = run_main()  # Runs only once
+    execution_time = run_main()
     print(f"Execution time: {execution_time:.2f} seconds.")
