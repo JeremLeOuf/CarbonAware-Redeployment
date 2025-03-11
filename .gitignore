@@ -9,14 +9,17 @@ venv/
 env/
 
 # Logs
-# logs/terraform.log
-# logs/redeploy.log
+logs/terraform.log
+logs/redeploy.log
 
 # Terraform
 .terraform/
 *.tfvars.json
 .terraform.lock.hcl
 terraform/terraform.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
 
 # Environment/Sensitive
 .env
