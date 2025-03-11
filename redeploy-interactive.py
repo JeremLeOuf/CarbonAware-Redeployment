@@ -476,7 +476,7 @@ def deploy():
 
     if current_best_region != chosen_region:
         print(
-            f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly})!\n"
+            # f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly})!\n"
             f"\nℹ️ Currently deploying to: {chosen_region} ({friendly})."
         )
 
