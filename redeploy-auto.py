@@ -168,9 +168,8 @@ def terminate_instance(instance_id: str, region: str):
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"⏳ Started termination of {instance_id} in {region}.")
         log_message(
-            f"Started termination {instance_id} in {region}.\n", region=region)
+            f"Started termination of {instance_id} in {region}...\n", region=region)
     else:
         print(
             f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
@@ -391,6 +390,8 @@ def deploy():
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(f"⏳ Waiting {DNS_TTL}s for DNS to propagate...")
                     time.sleep(DNS_TTL)
+                    print(
+                        f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
                         f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\n✅ Deployment complete! Application available at: http://{MYAPP_DOMAIN}.")
 
