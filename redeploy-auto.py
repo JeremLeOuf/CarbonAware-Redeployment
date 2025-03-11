@@ -293,9 +293,13 @@ def run_terraform(deploy_region):
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a") as log_file:
-        subprocess.run(["terraform", "init", "-upgrade", "-no-color"],
-                       cwd=TERRAFORM_DIR, stdout=log_file)
-        subprocess.run(["terraform", "apply", "-auto-approve", "-compact-warnings", "-no-color"],
+        subprocess.run(
+            ["terraform", "init", "-upgrade", "-no-color"],
+            cwd=TERRAFORM_DIR,
+            stdout=subprocess.DEVNULL,  # Redirect standard output to /dev/null
+            stderr=subprocess.DEVNULL   # Redirect standard error to /dev/null
+        )
+        subprocess.run(["terraform", "apply", "-compact-warnings", "-auto-approve", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
     log_message("Terraform deployment complete!", region=deploy_region)
@@ -452,6 +456,8 @@ def deploy():
                     print("✅ Redeployment process complete.")
                     log_message(
                         "Redeployment process complete.", region=chosen_region)
+                    log_message(f"Execution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n\n", region=chosen_region
+                                )
 
             else:
                 print(
@@ -509,7 +515,7 @@ def deploy():
             log_message(
                 "Redeployment process complete.", region=chosen_region)
             log_message(
-                f"Execution time: {execution_time:.4f} seconds.\n\n================================================\n\n",
+                f"Execution time: {execution_time:.2f} seconds.\n\n====================================================================================================================\n", region=chosen_region
             )
         else:
             print(
@@ -518,9 +524,9 @@ def deploy():
         print("✅ No change needed - you're already in the greenest region.")
 
 
+execution_time = timeit.timeit(deploy, number=1)
+
+
 if __name__ == "__main__":
-    execution_time = timeit.timeit(deploy, number=1)
+    deploy()
     print(f"Execution time: {execution_time:.2f} seconds.")
-    log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n============================================================================================================================================\n", region="N/A"
-    )
