@@ -404,7 +404,7 @@ def update_dns(instance_ip, chosen_region, arg2, arg3):
 # -------------------------------------------------------------------
 
 
-def deploy():
+def deploy(execution_time=None):
     """
     Automates instance deployment based on carbon intensity,
     fully non-interactive. Automatically uses the lowest-carbon region,
@@ -522,10 +522,13 @@ def run_main():
     """Runs the main code and returns execution time."""
     start_time = time.perf_counter()
 
-    deploy()
+    execution_time = None  # Ensure variable is initialized
 
-    end_time = time.perf_counter()
-    return end_time - start_time
+    # Run deployment logic and pass execution time later
+    execution_time = time.perf_counter() - start_time
+    deploy(execution_time)
+
+    return execution_time  # Store execution time for other functions
 
 
 if __name__ == "__main__":
