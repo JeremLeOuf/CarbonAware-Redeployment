@@ -234,7 +234,7 @@ def update_tfvars(region: str):
     print(
         f"✅ Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}.\n")
     log_message(
-        f"Updated Terraform variables: Region={region} ({friendly_region}), Deployment_ID={deployment_id}\n",
+        f"Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}",
         region=region
     )
 
