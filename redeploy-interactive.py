@@ -285,7 +285,7 @@ def run_terraform(deploy_region):
     print(
         f"\n🔄 Running Terraform deployment in {deploy_region} ({friendly_region})...")
     log_message(
-        f"🔄 Running Terraform deployment in {deploy_region}...", region=deploy_region)
+        f"Running Terraform deployment in {deploy_region}...", region=deploy_region)
 
     remove_security_groups(deploy_region)
 
