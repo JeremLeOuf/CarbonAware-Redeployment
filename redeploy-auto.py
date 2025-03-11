@@ -440,8 +440,7 @@ def deploy():
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
-                    print(
-                        f"✅ Redeployment process complete.")
+                    print("✅ Redeployment process complete.")
                     log_message(
                         f"Redeployment process complete.\n", region=chosen_region)
 
@@ -453,53 +452,61 @@ def deploy():
         return
 
     # Case 2: Some instances exist in other regions, but the new region is better
-    # Let’s see which region is currently the best among the deployed ones
-    current_best_region = min(
-        deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
-    )
-    current_best_friendly = REGION_FRIENDLY_NAMES.get(
-        current_best_region, current_best_region)
-
-    print(
-        f"\nℹ️ Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly}).")
-
-    if current_best_region != chosen_region:
-        print(
-            f"🌱 Redeploying to '{chosen_region}' ({friendly})... (Current: '{current_best_region}' ({current_best_friendly}))\n"
+    if deployments:
+        current_best_region = min(
+            deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
         )
+        current_best_friendly = REGION_FRIENDLY_NAMES.get(
+            current_best_region, current_best_region)
 
-        update_tfvars(chosen_region)
-        run_terraform(chosen_region)
-
-        if instance_ip := get_terraform_output("instance_public_ip"):
+        if current_best_region == chosen_region:
             print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
-            if wait_for_http_ok(instance_ip, 80):
-                if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns_record(
-                        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-                    print(
-                        f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL} for DNS to fully propagate...")
-                    time.sleep(DNS_TTL)
-                    print(
-                        f"✅ DNS A record updated!\nℹ️ Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
+                f"\n✅ The currently deployed region '{current_best_region}' ({current_best_friendly}) already has the lowest carbon intensity. No redeployment needed.")
+            # Skip redeployment if it's already in the lowest-carbon region.
+            return
 
-                # Terminate old instances in other regions
-                for reg, instance_ids in deployments.items():
-                    if reg != chosen_region:
-                        for inst_id in instance_ids:
-                            terminate_instance(inst_id, reg)
-                            remove_security_groups(reg)
-                            print(
-                                f"✅ Redeployment process complete.")
-                            log_message(
-                                f"Redeployment process complete.\n", region=chosen_region)
+        print(
+            f"\nℹ️ Among currently running instances, the best deployed region is '{current_best_region}' ({current_best_friendly}), "
+            f"but the lowest-carbon region overall is '{chosen_region}' ({friendly}). Proceeding with redeployment..."
+        )
+    else:
+        print("\nℹ️ No running instances found. Proceeding with deployment to the best region.")
 
-            else:
+    # Proceed with redeployment
+    print(
+        f"🌱 Redeploying to '{chosen_region}' ({friendly})... (Current: '{current_best_region}' ({current_best_friendly}))\n")
+
+    update_tfvars(chosen_region)
+    run_terraform(chosen_region)
+
+    if instance_ip := get_terraform_output("instance_public_ip"):
+        print(
+            f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
+
+        if wait_for_http_ok(instance_ip, 80):
+            if MYAPP_DOMAIN and HOSTED_ZONE_ID:
+                update_dns_record(instance_ip, MYAPP_DOMAIN,
+                                  HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                 print(
-                    "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
+                    f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}s for DNS to fully propagate...")
+                time.sleep(DNS_TTL)
+                print(
+                    f"✅ DNS A record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
+
+            # Terminate old instances in other regions
+            for reg, instance_ids in deployments.items():
+                if reg != chosen_region:
+                    for inst_id in instance_ids:
+                        terminate_instance(inst_id, reg)
+                        remove_security_groups(reg)
+
+            print("✅ Redeployment process complete.")
+            log_message("Redeployment process complete.", region=chosen_region)
         else:
-            print("✅ No change needed - you're already in the greenest region.")
+            print(
+                "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
+    else:
+        print("✅ No change needed - you're already in the greenest region.")
 
 
 if __name__ == "__main__":
