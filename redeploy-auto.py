@@ -191,7 +191,7 @@ def terminate_instance(instance_id: str, region: str):
         return  # bail out early if we couldn’t even start termination
 
     # Step 2: Wait until instance is fully terminated
-    print("ℹ️  Waiting for old instance to fully terminate...")
+    print("ℹ️ Waiting for old instance to fully terminate...")
     wait_cmd = [
         "aws", "ec2", "wait", "instance-terminated",
         "--instance-ids", instance_id,
@@ -419,7 +419,7 @@ def deploy():
     # Case 1: No instances are currently running
     if not deployments:
         print(
-            f"\nℹ️  No instance deployed yet.\n⏳ Deploying to {chosen_region}...\n")
+            f"\nℹ️ No instance deployed yet.\n⏳ Deploying to {chosen_region}...\n")
         log_message(
             f"Starting new deployment to {chosen_region}...", region=chosen_region)
 
@@ -439,7 +439,7 @@ def deploy():
                     print(
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
-                        f"✅ DNS record updated!\nℹ️  Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                     print(
                         f"✅ Redeployment process complete.")
                     log_message(
@@ -461,7 +461,7 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️  Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly}).")
+        f"\nℹ️ Current region with the lowest intensity among the ones available: '{current_best_region}' ({current_best_friendly}).")
 
     if current_best_region != chosen_region:
         print(
@@ -482,7 +482,7 @@ def deploy():
                         f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
                     time.sleep(30)
                     print(
-                        f"✅ DNS A record updated!\nℹ️  Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
+                        f"✅ DNS A record updated!\nℹ️ Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
 
                 # Terminate old instances in other regions
                 for reg, instance_ids in deployments.items():
