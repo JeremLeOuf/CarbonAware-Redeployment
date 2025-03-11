@@ -297,8 +297,8 @@ def run_terraform(deploy_region):
         subprocess.run(["terraform", "apply", "-auto-approve", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
-    log_message("Terraform deployment complete!", region=deploy_region)
-    print("\n✅ Terraform deployment complete!\n")
+    log_message("Terraform deployment complete!\n", region=deploy_region)
+    print("\n✅ Terraform deployment complete!")
 
 
 def get_terraform_output(output_var: str):
@@ -351,7 +351,8 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"Updating DNS A record {domain} to {new_ip}", region=region)
+    log_message(
+        f"Updating DNS A record http://{domain} to {new_ip}", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -439,6 +440,10 @@ def deploy():
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
                         f"✅ DNS record updated!\nℹ️  Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                    print(
+                        f"✅ Redeployment process complete.")
+                    log_message(
+                        f"Redeployment process complete.\n", region=chosen_region)
 
             else:
                 print(
@@ -485,6 +490,10 @@ def deploy():
                         for inst_id in instance_ids:
                             terminate_instance(inst_id, reg)
                             remove_security_groups(reg)
+                            print(
+                                f"✅ Redeployment process complete.")
+                            log_message(
+                                f"Redeployment process complete.\n", region=chosen_region)
 
             else:
                 print(

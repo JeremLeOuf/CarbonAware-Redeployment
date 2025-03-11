@@ -31,8 +31,3 @@ resource "aws_security_group" "myapp_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
-output "security_group_id" {
-  description = "The ID of the SG created by networking module"
-  value       = aws_security_group.myapp_sg.id
-}
