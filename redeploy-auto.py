@@ -434,8 +434,8 @@ def deploy():
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(
-                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
-                    time.sleep(30)
+                        f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL} for DNS to fully propagate...")
+                    time.sleep(DNS_TTL)
                     print(
                         f"⏳ Started termination of {instance_ip} in {reg}...")
                     print(
@@ -479,8 +479,8 @@ def deploy():
                     update_dns_record(
                         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
                     print(
-                        f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
-                    time.sleep(30)
+                        f"⏳ Updating DNS A record for {MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL} for DNS to fully propagate...")
+                    time.sleep(DNS_TTL)
                     print(
                         f"✅ DNS A record updated!\nℹ️ Fully redeployed to {chosen_region} ('{friendly}')!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
 

@@ -157,32 +157,63 @@ def check_existing_deployments():
 
 
 def terminate_instance(instance_id: str, region: str):
-    """Terminate an EC2 instance in the specified AWS region with reduced output."""
+    """
+    Terminate an EC2 instance in the specified AWS region
+    and block until the instance is fully terminated.
+    """
     log_message(
-        f"Terminating old instance {instance_id} in {region}...", region=region)
+        f"Terminating old instance {instance_id} in {region}...", region=region
+    )
 
-    cmd = [
+    # Step 1: Terminate the instance
+    terminate_cmd = [
         "aws", "ec2", "terminate-instances",
         "--instance-ids", instance_id,
         "--region", region,
         "--no-cli-pager",
         "--output", "text"
     ]
+    terminate_result = subprocess.run(
+        terminate_cmd, capture_output=True, text=True)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f"\n⏳ Started termination of '{instance_id}' in '{region}'...")
+    if terminate_result.returncode == 0:
         log_message(
-            f"Started termination of instance '{instance_id}' in '{region}'.\n",
+            f"Started termination of {instance_id} in {region}...\n",
             region=region
         )
     else:
         print(
-            f"❌ Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}")
+            f"❌ Failed to terminate instance {instance_id} in {region}. "
+            f"Error: {terminate_result.stderr}"
+        )
         log_message(
-            f"Failed to terminate instance {instance_id} in {region}. Error: {result.stderr}",
-            region=region,
-            level="error"
+            f"Failed to terminate instance {instance_id} in {region}. "
+            f"Error: {terminate_result.stderr}",
+            region=region, level="error"
+        )
+        return  # bail out early if we couldn’t even start termination
+
+    # Step 2: Wait until instance is fully terminated
+    wait_cmd = [
+        "aws", "ec2", "wait", "instance-terminated",
+        "--instance-ids", instance_id,
+        "--region", region
+    ]
+    wait_result = subprocess.run(wait_cmd, capture_output=True, text=True)
+    if wait_result.returncode == 0:
+        log_message(
+            f"Instance {instance_id} in {region} is fully terminated.\n",
+            region=region
+        )
+    else:
+        print(
+            f"❌ Wait for instance {instance_id} termination failed. "
+            f"Error: {wait_result.stderr}"
+        )
+        log_message(
+            f"Wait for instance {instance_id} termination failed. "
+            f"Error: {wait_result.stderr}",
+            region=region, level="error"
         )
 
 
