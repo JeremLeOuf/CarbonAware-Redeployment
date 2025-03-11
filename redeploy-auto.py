@@ -518,20 +518,15 @@ def deploy(execution_time=None):
 
 def run_main():
     """Runs the main code and returns execution time."""
-    start_time = time.perf_counter()
+    start_time = time.perf_counter()  # Start the timer
 
-    execution_time = None
+    deploy()  # Run the main logic
 
-    # Run deployment logic and pass execution time later
-    execution_time = time.perf_counter() - start_time
-    deploy(execution_time)
-
-    return execution_time  # Store execution time for other functions
+    return time.perf_counter() - start_time
 
 
 if __name__ == "__main__":
     execution_time = run_main()
     print(f"Execution time: {execution_time:.2f} seconds.")
     log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n============================================================================================================================================", region="N/A"
-    )
+        f"Execution time: {execution_time:.2f} seconds.\n\n" + "=" * 150, region="TIMER")
