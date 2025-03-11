@@ -298,7 +298,7 @@ def run_terraform(deploy_region):
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
     log_message("Terraform deployment complete!\n", region=deploy_region)
-    print("\n✅ Terraform deployment complete!")
+    print("\n✅ Terraform deployment complete!\n")
 
 
 def get_terraform_output(output_var: str):
