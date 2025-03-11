@@ -292,7 +292,7 @@ def run_terraform(deploy_region):
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a") as log_file:
-        subprocess.run(["terraform", "init", "-no-color"],
+        subprocess.run(["terraform", "init", "-upgrade", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
         subprocess.run(["terraform", "apply", "-auto-approve", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
