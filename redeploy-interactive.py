@@ -178,7 +178,7 @@ def terminate_instance(instance_id: str, region: str):
 
     if terminate_result.returncode == 0:
         log_message(
-            f"Started termination of {instance_id} in {region}...\n",
+            f"Started termination of {instance_id} in {region}...",
             region=region
         )
     else:
@@ -358,7 +358,8 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(f"Updating DNS A record {domain} to {new_ip}", region=region)
+    log_message(
+        f"Updating DNS A record {domain} to {new_ip}...\n", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -512,5 +513,17 @@ def deploy():
             print("✅ No change needed - you're already in the greenest region.")
 
 
+def run_main():
+    """Runs the main code and returns execution time."""
+    start_time = time.perf_counter()  # Start the timer
+
+    deploy()  # Run the main logic
+
+    return time.perf_counter() - start_time
+
+
 if __name__ == "__main__":
-    deploy()
+    execution_time = run_main()
+    print(f"Execution time: {execution_time:.2f} seconds.")
+    log_message(
+        f"Execution time: {execution_time:.2f} seconds.\n\n" + "=" * 116 + "\n", region="TIMER")
