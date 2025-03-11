@@ -517,5 +517,5 @@ if __name__ == "__main__":
     execution_time = timeit.timeit(deploy, number=1)
     print(f"Execution time: {execution_time:.2f} seconds.")
     log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n================================================\n", region="N/A"
+        f"Execution time: {execution_time:.2f} seconds.\n\n============================================================================================================================================\n", region="N/A"
     )
