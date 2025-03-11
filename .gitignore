@@ -16,6 +16,7 @@ env/
 .terraform/
 *.tfvars.json
 .terraform.lock.hcl
+terraform/terraform.tfvars
 
 # Environment/Sensitive
 .env

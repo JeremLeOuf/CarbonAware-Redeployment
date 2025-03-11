@@ -1,12 +1,12 @@
 variable "aws_region" {
   type        = string
-  description = "AWS region to deploy the instance"
+  description = "AWS region to deploy the instance to"
   default = "eu-central-1"
 }
 
 variable "deployment_id" {
   type        = string
-  description = "Unique deployment identifier (used to force new instance)"
+  description = "Unique deployment identifier (used to force new instance deployment)"
   default = 0
 }
 
