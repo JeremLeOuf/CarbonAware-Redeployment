@@ -23,8 +23,8 @@ resource "aws_instance" "myapp" {
     Name = "myapp-instance"
   }
 
-  user_data = file("${path.module}/scripts/userdata.sh")
-}
+  user_data = file("${path.root}/scripts/userdata.sh")
+  }
 
 output "instance_id" {
   description = "EC2 instance ID"
