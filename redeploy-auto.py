@@ -442,7 +442,7 @@ def deploy():
                         f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                     print("✅ Redeployment process complete.")
                     log_message(
-                        "Redeployment process complete.\n================\n", region=chosen_region)
+                        "Redeployment process complete.\n\n================\n\n", region=chosen_region)
 
             else:
                 print(
@@ -502,7 +502,7 @@ def deploy():
 
             print("✅ Redeployment process complete.")
             log_message(
-                "Redeployment process complete.\n================\n", region=chosen_region)
+                "Redeployment process complete.\n\n================\n\n", region=chosen_region)
         else:
             print(
                 "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
