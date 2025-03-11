@@ -524,9 +524,16 @@ def deploy():
         print("✅ No change needed - you're already in the greenest region.")
 
 
-execution_time = timeit.timeit(deploy, number=1)
+def run_main():
+    """Runs the main code and returns execution time."""
+    start_time = time.perf_counter()
+
+    deploy()
+
+    end_time = time.perf_counter()
+    return end_time - start_time
 
 
 if __name__ == "__main__":
-    deploy()
+    execution_time = run_main()  # Runs only once
     print(f"Execution time: {execution_time:.2f} seconds.")
