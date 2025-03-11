@@ -16,15 +16,17 @@ variable "security_group_id" {
 resource "aws_instance" "myapp" {
   ami           = var.amis[var.aws_region]
   instance_type = "t2.micro"
+  vpc_security_group_ids = [var.security_group_id]  
+  user_data = file("${path.root}/scripts/userdata.sh")
 
-  vpc_security_group_ids = [var.security_group_id]
+  lifecycle {
+    create_before_destroy = true
+  }
 
   tags = {
     Name = "myapp-instance"
   }
-
-  user_data = file("${path.root}/scripts/userdata.sh")
-  }
+}
 
 output "instance_id" {
   description = "EC2 instance ID"
