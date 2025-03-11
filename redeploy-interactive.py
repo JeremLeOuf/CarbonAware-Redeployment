@@ -406,7 +406,7 @@ def deploy():
     # CASE 1: No instances are currently running
     if not deployments:
         print(
-            f"ℹ️  No instance deployed yet. Starting fresh deployment in '{chosen_region}'...")
+            f"ℹ️ No instance deployed yet. Starting fresh deployment in '{chosen_region}'...")
 
         update_tfvars(chosen_region)
         run_terraform(chosen_region)
@@ -422,7 +422,7 @@ def deploy():
                         f"⏳ Updating DNS A record {MYAPP_DOMAIN} → {instance_ip}. Waiting 30s for DNS to fully propagate...")
                     time.sleep(30)
                     print(
-                        f"✅ DNS record updated!\nℹ️  Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                        f"✅ DNS record updated!\nℹ️ Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
             else:
                 print(
                     "❌ The new instance is not responding on HTTP. Please investigate.")
@@ -437,12 +437,12 @@ def deploy():
         current_best_region, current_best_region)
 
     print(
-        f"\nℹ️  Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
+        f"\nℹ️ Current region with the lowest intensity among the ones available: {current_best_region} ({current_best_friendly})")
 
     if current_best_region != chosen_region:
         print(
             f"🌱 A lower carbon region is available: {current_best_region} ({current_best_friendly})!\n"
-            f"\nℹ️  Currently deploying to: {chosen_region} ({friendly})."
+            f"\nℹ️ Currently deploying to: {chosen_region} ({friendly})."
         )
 
         update_tfvars(chosen_region)
@@ -458,7 +458,7 @@ def deploy():
                 print("⏳ Waiting 30s for DNS to fully propagate...")
                 time.sleep(30)
                 print(
-                    f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\nℹ️  Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
+                    f"✅ DNS record updated: {MYAPP_DOMAIN} → {instance_ip}\nℹ️ Fully redeployed to {friendly} ({chosen_region})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
                 # Terminate old instance(s)
                 for reg, instance_ids in deployments.items():
                     if reg != chosen_region:
