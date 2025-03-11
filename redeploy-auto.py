@@ -175,7 +175,7 @@ def terminate_instance(instance_id: str, region: str):
 
     if terminate_result.returncode == 0:
         log_message(
-            f"Started termination of {instance_id} in {region}...\n",
+            f"Started termination of {instance_id} in {region}...",
             region=region
         )
     else:
@@ -297,7 +297,7 @@ def run_terraform(deploy_region):
         subprocess.run(["terraform", "apply", "-auto-approve", "-no-color"],
                        cwd=TERRAFORM_DIR, stdout=log_file)
 
-    log_message("Terraform deployment complete!\n", region=deploy_region)
+    log_message("Terraform deployment complete!", region=deploy_region)
     print("\n✅ Terraform deployment complete!\n")
 
 
@@ -352,7 +352,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
     log_message(
-        f"Updating DNS A record http://{domain} to {new_ip}", region=region)
+        f"Updating DNS A record http://{domain} to {new_ip}...\n", region=region)
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
