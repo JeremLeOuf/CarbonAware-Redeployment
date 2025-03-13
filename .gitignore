@@ -26,8 +26,7 @@ terraform/terraform.tfstate.backup
 # OS / Editor
 .DS_Store
 Thumbs.db
+
+# Testing
 test_redeploy.py
-terraform/terraform.tfstate.backup
-terraform/terraform.tfstate.backup
-terraform/terraform.tfstate.backup
-terraform/terraform.tfvars
+
