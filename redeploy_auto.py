@@ -216,7 +216,7 @@ def terminate_instance(instance_id: str, region: str):
     if wait_result.returncode == 0:
         print(f"✅ Instance {instance_id} in {region} is fully terminated.\n")
         log_message(
-            f"Instance {instance_id} in {region} is fully terminated.\n",
+            f"Instance '{instance_id}' is fully terminated.\n",
             region=region
         )
     else:
