@@ -205,7 +205,7 @@ def terminate_instance(instance_id: str, region: str):
         wait_cmd, capture_output=True, text=True, check=True
     )
     if wait_result.returncode == 0:
-        success_msg = f"Successfully terminated instance '{instance_id}'.\n"
+        success_msg = f"Successfully terminated instance '{instance_id}'."
         print(f"✅ {success_msg}\n")
         log_message(success_msg, region=region)
     else:
@@ -273,7 +273,7 @@ def update_tfvars(region: str):
         f.write(f'deployment_id = "{deployment_id}"\n')
 
     log_message(
-        f"Updated Terraform variables: 'Region={region}', 'Deployment_ID={deployment_id}'\n.",
+        f"Updated Terraform variables: 'Region={region}', 'Deployment_ID={deployment_id}'.",
         region="SYSTEM"
     )
 
@@ -336,7 +336,6 @@ def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
 
         print(
             f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
-        time.sleep(interval)
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}")
     log_message(
@@ -355,10 +354,6 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(
-        f"Updating DNS A record of '{domain}' to '{new_ip}'...",
-        region=region
-    )
 
     change_batch = {
         "Comment": "Update A record to new instance IP",
@@ -392,6 +387,14 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         print(f"❌ Failed to update DNS record {domain}.")
         log_message(
             f"Failed to update DNS record '{domain}'.", region=region, level="error")
+    else:
+        print(
+            f"ℹ️ Updated DNS A record of {domain} → {new_ip}. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...\n")
+        log_message(
+            f"Updated DNS A record of '{domain}' to '{new_ip}'. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
+            region=region
+        )
+        # time.sleep(DNS_TTL)
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -438,7 +441,7 @@ def deploy_to_region(region: str, old_deployments: dict):
     print(
         f"ℹ️ Checking HTTP availability on the new instance ('{instance_id}')...")
     log_message(
-        f"New instance deployed. IP: '{instance_ip}'. ID: '{instance_id}'. "
+        f"New instance deployed (IP: '{instance_ip}' - ID: '{instance_id}'). "
         "Running HTTP check before continuing...",
         region=region
     )
@@ -453,10 +456,9 @@ def deploy_to_region(region: str, old_deployments: dict):
         return
 
     # Update DNS record
-    print(f"⏳ Updating DNS A record of {MYAPP_DOMAIN} → {instance_ip}...")
     update_dns_record(instance_ip, MYAPP_DOMAIN,
                       HOSTED_ZONE_ID, DNS_TTL, region=region)
-    print("ℹ️ DNS record updated!\n\nℹ️ Redeployment complete. Starting cleanup...")
+    print("ℹ️ Redeployment complete. Starting cleanup...")
     log_message("Redeployment process complete.\n", region="SYSTEM")
 
     # Cleanup old instances and security groups
@@ -466,7 +468,17 @@ def deploy_to_region(region: str, old_deployments: dict):
             if old_region != region:
                 for inst_id in instances:
                     terminate_instance(inst_id, old_region)
-                    remove_security_groups(old_region)
+                    try:
+                        remove_security_groups(old_region)
+                    except subprocess.CalledProcessError as e:
+                        print(
+                            f"❌ Failed to remove security groups in {old_region}. Error: {e}")
+                        log_message(
+                            f"Failed to remove security groups in {old_region}. Error: {e}",
+                            region=old_region,
+                            level="error"
+                        )
+        print("✅ Cleanup complete. Successfully deleted old instances and security groups. Exiting.\n")
         log_message(
             "Cleanup complete. Successfully deleted old instances and security groups.\n",
             region="SYSTEM"
@@ -521,7 +533,7 @@ def deploy():
     # Log the start of redeployment if needed
     if deployments:
         log_message(
-            f"Starting redeployment process to '{chosen_region}'...",
+            f"Starting manual redeployment process to '{chosen_region}'...",
             region="SYSTEM"
         )
 

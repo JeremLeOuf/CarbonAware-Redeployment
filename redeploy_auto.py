@@ -187,10 +187,10 @@ def terminate_instance(instance_id: str, region: str):
 
     if terminate_result.returncode == 0:
         print(
-            f"Terminating instance {instance_id} in {region}..."
+            f"⏳ Terminating instance {instance_id} in {region}..."
         )
         log_message(
-            f"Terminating instance {instance_id} in {region}...",
+            f"Started termination of instance '{instance_id}'...",
             region=region
         )
     else:
@@ -206,7 +206,6 @@ def terminate_instance(instance_id: str, region: str):
         return
 
     # Step 2: Wait until instance is fully terminated
-    print("ℹ️ Waiting for old instance to fully terminate...")
     wait_cmd = [
         "aws", "ec2", "wait", "instance-terminated",
         "--instance-ids", instance_id,
@@ -265,14 +264,21 @@ def remove_security_groups(region: str):
             "--no-cli-pager",
             "--output", "text"
         ]
-        print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
+        print(f"⏳ Deleting SG '{sg_id}' in '{region}'...")
+        log_message(f"Started deletion of SG '{sg_id}'...", region=region)
         result = subprocess.run(
             cmd, capture_output=True, text=True, check=True)
         if result.returncode == 0:
             print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'.\n")
+            log_message(f"Successfully deleted SG '{sg_id}'.", region=region)
         else:
             print(
                 f"❌ Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}")
+            log_message(
+                f"Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}",
+                region=region,
+                level="error"
+            )
 
 
 def update_tfvars(region: str):
@@ -299,7 +305,7 @@ def run_terraform(deploy_region: str):
         f"({friendly_region})."
     )
 
-    print("⏳ Applying Terraform configuration. This may take a few minutes...")
+    print("⏳ Applying Terraform configuration. This may take a few minutes...\n")
 
     log_file_path = LOGS_DIR / "terraform.log"
     with open(log_file_path, "a", encoding="utf-8") as log_file:
@@ -375,9 +381,6 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
     """
     Update a Route53 A record (myapp.example.com) to point to 'new_ip'.
     """
-    log_message(
-        f"Updating DNS A record http://{domain} to {new_ip}...\n", region=region)
-
     change_batch = {
         "Comment": "Update A record to new instance IP",
         "Changes": [
@@ -409,23 +412,15 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         print(ret.stderr)
         print(f"❌ Failed to update DNS record {domain}.")
         log_message(
-            f"Failed to update DNS record {domain}.", region=region, level="error")
-
-
-def update_dns(instance_ip, chosen_region, arg2, arg3):
-    """
-    Update DNS records and wait for propagation.
-
-    Args:
-        instance_ip: The IP address of the new instance
-        chosen_region: The AWS region where the instance is deployed
-        arg2: Prefix message for DNS update
-        arg3: Suffix message for DNS update
-    """
-    update_dns_record(
-        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
-    print(f"{arg2}{MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}{arg3}")
-    time.sleep(DNS_TTL)
+            f"Failed to update DNS record '{domain}'.", region=region, level="error")
+    else:
+        print(
+            f"ℹ️ Updated DNS A record of {domain} → {new_ip}. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...\n")
+        log_message(
+            f"Updated DNS A record of '{domain}' to '{new_ip}'. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
+            region=region
+        )
+        # time.sleep(DNS_TTL)
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -447,7 +442,7 @@ def deploy_to_region(region: str, old_deployments: dict):
         return
 
     print(
-        f"ℹ️ Checking HTTP availability on the new instance IP: {instance_ip}...")
+        f"ℹ️ Checking HTTP availability on the new instance (IP {instance_ip})...")
     log_message(
         f"New instance deployed. IP: '{instance_ip}'. ID: '{instance_id}'. "
         "Running HTTP check before continuing...",
@@ -464,10 +459,9 @@ def deploy_to_region(region: str, old_deployments: dict):
         return
 
     # Update DNS record
-    print(f"⏳ Updating DNS A record of {MYAPP_DOMAIN} → {instance_ip}...")
     update_dns_record(instance_ip, MYAPP_DOMAIN,
                       HOSTED_ZONE_ID, DNS_TTL, region=region)
-    print("✅ DNS record updated!\n\nℹ️ Redeployment complete. Starting cleanup...")
+    print("ℹ️ Redeployment complete. Starting cleanup...")
     log_message("Redeployment process complete.\n", region="SYSTEM")
 
     # Cleanup old instances and security groups
@@ -477,12 +471,23 @@ def deploy_to_region(region: str, old_deployments: dict):
             if old_region != region:
                 for inst_id in instances:
                     terminate_instance(inst_id, old_region)
-                    remove_security_groups(old_region)
+                    try:
+                        remove_security_groups(old_region)
+                    except subprocess.CalledProcessError as e:
+                        print(
+                            f"❌ Failed to remove security groups in {old_region}. Error: {e}")
+                        log_message(
+                            f"Failed to remove security groups in {old_region}. Error: {e}",
+                            region=old_region,
+                            level="error"
+                        )
+        print("✅ Cleanup complete. Successfully deleted old instances and security groups. Exiting.\n")
         log_message(
             "Cleanup complete. Successfully deleted old instances and security groups.\n",
             region="SYSTEM"
         )
     else:
+        print("✅ No old instances found to clean up. Exiting.\n")
         log_message("No old instances found to clean up.\n", region="SYSTEM")
 
 
