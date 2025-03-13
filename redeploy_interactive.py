@@ -175,9 +175,7 @@ def terminate_instance(instance_id: str, region: str):
     """
     print(f"⏳ Terminating instance '{instance_id}' in '{region}'...")
     log_message(
-        f"Started termination of instance '{instance_id}'...",
-        region=region
-    )
+        f"Started termination of instance '{instance_id}'...", region=region)
 
     # Step 1: Terminate the instance
     terminate_cmd = [
@@ -192,16 +190,9 @@ def terminate_instance(instance_id: str, region: str):
     )
 
     if terminate_result.returncode != 0:
-        print(
-            f"❌ Failed to terminate instance {instance_id} in {region}. "
-            f"Error: {terminate_result.stderr}"
-        )
-        log_message(
-            f"Failed to terminate instance '{instance_id}' in '{region}'. "
-            f"Error: {terminate_result.stderr}",
-            region=region,
-            level="error"
-        )
+        error_msg = f"Failed to terminate instance '{instance_id}' in '{region}'. Error: {terminate_result.stderr}"
+        print(f"❌ {error_msg}")
+        log_message(error_msg, region=region, level="error")
         return
 
     # Step 2: Wait until instance is fully terminated
@@ -214,23 +205,13 @@ def terminate_instance(instance_id: str, region: str):
         wait_cmd, capture_output=True, text=True, check=True
     )
     if wait_result.returncode == 0:
-        print(
-            f"✅ Successfully terminated instance '{instance_id}' in '{region}'.\n")
-        log_message(
-            f"Successfully terminated instance '{instance_id}'.",
-            region=region
-        )
+        success_msg = f"Successfully terminated instance '{instance_id}'.\n"
+        print(f"✅ {success_msg}\n")
+        log_message(success_msg, region=region)
     else:
-        print(
-            f"❌ Wait for instance {instance_id} termination failed. "
-            f"Error: {wait_result.stderr}"
-        )
-        log_message(
-            f"Wait for instance '{instance_id}' termination failed. "
-            f"Error: {wait_result.stderr}",
-            region=region,
-            level="error"
-        )
+        error_msg = f"Wait for instance {instance_id} termination failed. Error: {wait_result.stderr}"
+        print(f"❌ {error_msg}")
+        log_message(error_msg, region=region, level="error")
 
 
 def find_old_sgs(region: str):
@@ -292,7 +273,7 @@ def update_tfvars(region: str):
         f.write(f'deployment_id = "{deployment_id}"\n')
 
     log_message(
-        f"Updated Terraform variables: 'Region={region}', 'Deployment_ID={deployment_id}'.",
+        f"Updated Terraform variables: 'Region={region}', 'Deployment_ID={deployment_id}'\n.",
         region="SYSTEM"
     )
 
@@ -448,23 +429,21 @@ def deploy_to_region(region: str, old_deployments: dict):
 
     # Check deployment success
     instance_ip = get_terraform_output("instance_public_ip")
-    if not instance_ip:
-        print("❌ Failed to get instance IP from Terraform output")
-        return
-
     instance_id = get_terraform_output("instance_id")
-    if not instance_id:
-        print("❌ Failed to get instance ID from Terraform output")
+
+    if not instance_ip or not instance_id:
+        print("❌ Failed to get instance details from Terraform output")
         return
 
     print(
-        f"ℹ️ Checking HTTP availability on the new instance IP: {instance_ip}...")
+        f"ℹ️ Checking HTTP availability on the new instance ('{instance_id}')...")
     log_message(
         f"New instance deployed. IP: '{instance_ip}'. ID: '{instance_id}'. "
         "Running HTTP check before continuing...",
         region=region
     )
 
+    # Wait for HTTP check to complete
     if not wait_for_http_ok(instance_ip):
         print("❌ New instance failed health check")
         return
@@ -475,14 +454,10 @@ def deploy_to_region(region: str, old_deployments: dict):
 
     # Update DNS record
     print(f"⏳ Updating DNS A record of {MYAPP_DOMAIN} → {instance_ip}...")
-    update_dns_record(
-        instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=region
-    )
+    update_dns_record(instance_ip, MYAPP_DOMAIN,
+                      HOSTED_ZONE_ID, DNS_TTL, region=region)
     print("ℹ️ DNS record updated!\n\nℹ️ Redeployment complete. Starting cleanup...")
-    log_message(
-        "Redeployment process complete.\n",
-        region="SYSTEM"
-    )
+    log_message("Redeployment process complete.\n", region="SYSTEM")
 
     # Cleanup old instances and security groups
     log_message("Starting cleanup process...", region="SYSTEM")
@@ -497,22 +472,21 @@ def deploy_to_region(region: str, old_deployments: dict):
             region="SYSTEM"
         )
     else:
-        log_message(
-            "No old instances found to clean up.\n",
-            region="SYSTEM"
-        )
+        log_message("No old instances found to clean up.\n", region="SYSTEM")
 
 
 def deploy():
     """Interactive deployment based on carbon intensity."""
     # 1. Get carbon intensities and show recommendations
-    carbon_data = {}
-    for aws_region, map_zone in AWS_REGIONS.items():
-        intensity = get_carbon_intensity(map_zone)
+    carbon_data = {
+        aws_region: get_carbon_intensity(map_zone)
+        for aws_region, map_zone in AWS_REGIONS.items()
+    }
+
+    for aws_region, intensity in carbon_data.items():
         friendly = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
         print(
             f"🌍 '{aws_region}' ({friendly}) current carbon intensity: {intensity} gCO₂/kWh.")
-        carbon_data[aws_region] = intensity
 
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
@@ -547,7 +521,7 @@ def deploy():
     # Log the start of redeployment if needed
     if deployments:
         log_message(
-            f"Lower carbon region detected: '{chosen_region}'. Starting redeployment process...",
+            f"Starting redeployment process to '{chosen_region}'...",
             region="SYSTEM"
         )
 

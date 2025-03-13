@@ -1,13 +1,20 @@
-import subprocess
-import os
-import requests
-import time
-import json
-from dotenv import load_dotenv
-from pathlib import Path
-import tempfile
-import logging
+"""
+Carbon-aware deployment automation script that moves AWS EC2 instances 
+between regions based on real-time carbon intensity data from Electricity Maps.
+"""
 
+# Standard library imports
+import json
+import logging
+import os
+import subprocess
+import tempfile
+import time
+from pathlib import Path
+
+# Third-party imports
+import requests
+from dotenv import load_dotenv
 # -------------------------------------------------------------------
 # Load environment variables (from .env or system environment)
 # -------------------------------------------------------------------
@@ -82,7 +89,9 @@ def get_carbon_intensity(region_code: str) -> float:
     headers = {"auth-token": AUTH_TOKEN}
     try:
         response = requests.get(
-            f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}", headers=headers
+            f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}",
+            headers=headers,
+            timeout=10  # Add timeout
         )
         response.raise_for_status()
         data = response.json()
@@ -102,13 +111,17 @@ def find_best_region() -> str:
         intensity = get_carbon_intensity(map_zone)
         friendly_name = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
         print(
-            f"🌍 {aws_region} ({friendly_name}) Carbon Intensity: {intensity} gCO₂/kWh")
+            f"🌍 '{aws_region}' ({friendly_name}) current carbon intensity: {intensity} gCO₂/kWh")
         carbon_data[aws_region] = intensity
+        log_message(
+            f"{friendly_name}'s current carbon intensity: {intensity} gCO2/kWh", region=aws_region)
 
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
+    carbon_intensity_of_best_region = carbon_data[best_region]
     print(
-        f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' ({best_friendly}).")
+        f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' "
+        f"({best_friendly}) - {carbon_intensity_of_best_region} gCO₂/kWh.")
     return best_region
 
 # -------------------------------------------------------------------
@@ -140,15 +153,17 @@ def get_old_instances(region: str):
 
 def check_existing_deployments():
     """
-    Check all AWS_REGIONS for a running instance with the tag 'myapp-instance'.
+    Check all AWS regions for running instances with the tag 'myapp-instance'.
     Returns a dict: { region: [instance_ids], ... }.
     """
     deployments = {}
-    for region in AWS_REGIONS.keys():
+    for region in AWS_REGIONS:  # Iterate directly over dictionary
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
-                f"\n✅ Found running instance(s) in '{region}' ({friendly_region}): {instance_ids}.")
+                f"\n✅ Found running instance(s) in '{region}' "
+                f"({friendly_region}): {instance_ids}."
+            )
             deployments[region] = instance_ids
     return deployments
 
@@ -168,7 +183,7 @@ def terminate_instance(instance_id: str, region: str):
         "--output", "text"
     ]
     terminate_result = subprocess.run(
-        terminate_cmd, capture_output=True, text=True)
+        terminate_cmd, capture_output=True, text=True, check=True)
 
     if terminate_result.returncode == 0:
         print(
@@ -197,7 +212,8 @@ def terminate_instance(instance_id: str, region: str):
         "--instance-ids", instance_id,
         "--region", region
     ]
-    wait_result = subprocess.run(wait_cmd, capture_output=True, text=True)
+    wait_result = subprocess.run(
+        wait_cmd, capture_output=True, text=True, check=True)
     if wait_result.returncode == 0:
         print(f"✅ Instance {instance_id} in {region} is fully terminated.\n")
         log_message(
@@ -250,7 +266,8 @@ def remove_security_groups(region: str):
             "--output", "text"
         ]
         print(f"⏳ Started deletion of SG '{sg_id}' in '{region}'...")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True)
         if result.returncode == 0:
             print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'.\n")
         else:
@@ -266,43 +283,40 @@ def update_tfvars(region: str):
     tfvars_path = TERRAFORM_DIR / "terraform.tfvars"
     deployment_id = int(time.time())
 
-    with open(tfvars_path, "w") as f:
+    with open(tfvars_path, "w", encoding="utf-8") as f:
         f.write(f'aws_region = "{region}"\n')
         f.write(f'deployment_id = "{deployment_id}"\n')
 
-    friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
-    print(
-        f"✅ Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}.\n")
     log_message(
-        f"Updated Terraform variables: Region={region}, Deployment_ID={deployment_id}",
-        region=region
-    )
+        f"Updated Terraform variables: 'Region={region}', 'Deployment_ID={deployment_id}'", region=region)
 
 
-def run_terraform(deploy_region):
+def run_terraform(deploy_region: str):
+    """Execute Terraform commands to deploy infrastructure."""
     friendly_region = REGION_FRIENDLY_NAMES.get(deploy_region, deploy_region)
     print(
-        f"🔄 Running Terraform deployment in '{deploy_region}' ({friendly_region})...")
-    log_message(
-        f"Running Terraform deployment in {deploy_region}...", region=deploy_region)
-
-    remove_security_groups(deploy_region)
+        f"🔄 Running Terraform deployment in '{deploy_region}' "
+        f"({friendly_region})."
+    )
 
     print("⏳ Applying Terraform configuration. This may take a few minutes...")
 
     log_file_path = LOGS_DIR / "terraform.log"
-    with open(log_file_path, "a") as log_file:
+    with open(log_file_path, "a", encoding="utf-8") as log_file:
         subprocess.run(
             ["terraform", "init", "-upgrade", "-no-color"],
             cwd=TERRAFORM_DIR,
-            stdout=subprocess.DEVNULL,  # Redirect standard output to /dev/null
-            stderr=subprocess.DEVNULL   # Redirect standard error to /dev/null
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
         )
-        subprocess.run(["terraform", "apply", "-compact-warnings", "-auto-approve", "-no-color"],
-                       cwd=TERRAFORM_DIR, stdout=log_file)
-
-    log_message("Terraform deployment complete!", region=deploy_region)
-    print("\n✅ Terraform deployment complete!\n")
+        subprocess.run(
+            ["terraform", "apply", "-compact-warnings",
+                "-auto-approve", "-no-color"],
+            cwd=TERRAFORM_DIR,
+            stdout=log_file,
+            check=True
+        )
 
 
 def get_terraform_output(output_var: str):
@@ -311,7 +325,7 @@ def get_terraform_output(output_var: str):
     """
     cmd = ["terraform", "output", "-raw", output_var]
     result = subprocess.run(cmd, cwd=TERRAFORM_DIR,
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, check=True)
     if result.returncode == 0:
         return result.stdout.strip() or None
     print(
@@ -323,7 +337,7 @@ def get_terraform_output(output_var: str):
 # -------------------------------------------------------------------
 
 
-def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> bool:
+def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
     """
     Poll http://<ip_address> until we get a 200 response or we exhaust max_attempts.
     """
@@ -335,15 +349,21 @@ def wait_for_http_ok(ip_address: str, port=80, max_attempts=20, interval=5) -> b
                 print(f"✅ HTTP check succeeded for {url} !\n")
                 return True
         except requests.exceptions.RequestException as e:
-            logging.debug(f"HTTP request exception for {url}: {e}")
+            logging.debug("HTTP request exception for %s: %s",
+                          url, e)  # Fix f-string in logging
 
         print(
-            f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
+            f"⏳ Attempt {attempt}/{max_attempts}: "
+            f"waiting for HTTP 200 from {url}..."
+        )
         time.sleep(interval)
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}.")
     log_message(
-        f"Gave up waiting for a successful HTTP response from {url}", region="N/A", level="error")
+        f"Gave up waiting for a successful HTTP response from {url}",
+        region="N/A",
+        level="error"
+    )
     return False
 
 # -------------------------------------------------------------------
@@ -383,7 +403,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         "--change-batch", f"file://{temp_path}",
         "--output", "text", "--no-cli-pager"
     ]
-    ret = subprocess.run(cmd, capture_output=True, text=True)
+    ret = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
     if ret.returncode != 0:
         print(ret.stderr)
@@ -393,6 +413,15 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
 
 
 def update_dns(instance_ip, chosen_region, arg2, arg3):
+    """
+    Update DNS records and wait for propagation.
+
+    Args:
+        instance_ip: The IP address of the new instance
+        chosen_region: The AWS region where the instance is deployed
+        arg2: Prefix message for DNS update
+        arg3: Suffix message for DNS update
+    """
     update_dns_record(
         instance_ip, MYAPP_DOMAIN, HOSTED_ZONE_ID, DNS_TTL, region=chosen_region)
     print(f"{arg2}{MYAPP_DOMAIN} → {instance_ip}. Waiting {DNS_TTL}{arg3}")
@@ -403,127 +432,130 @@ def update_dns(instance_ip, chosen_region, arg2, arg3):
 # -------------------------------------------------------------------
 
 
+def deploy_to_region(region: str, old_deployments: dict):
+    """Handle deployment to region and cleanup of old instances."""
+    # Deploy new instance
+    update_tfvars(region)
+    run_terraform(region)
+
+    # Check deployment success
+    instance_ip = get_terraform_output("instance_public_ip")
+    instance_id = get_terraform_output("instance_id")
+
+    if not instance_ip or not instance_id:
+        print("❌ Failed to get instance details from Terraform output")
+        return
+
+    print(
+        f"ℹ️ Checking HTTP availability on the new instance IP: {instance_ip}...")
+    log_message(
+        f"New instance deployed. IP: '{instance_ip}'. ID: '{instance_id}'. "
+        "Running HTTP check before continuing...",
+        region=region
+    )
+
+    # Wait for HTTP check to complete
+    if not wait_for_http_ok(instance_ip):
+        print("❌ New instance failed health check")
+        return
+
+    if not (MYAPP_DOMAIN and HOSTED_ZONE_ID):
+        print("ℹ️ Skipping DNS update - domain or zone ID not configured")
+        return
+
+    # Update DNS record
+    print(f"⏳ Updating DNS A record of {MYAPP_DOMAIN} → {instance_ip}...")
+    update_dns_record(instance_ip, MYAPP_DOMAIN,
+                      HOSTED_ZONE_ID, DNS_TTL, region=region)
+    print("✅ DNS record updated!\n\nℹ️ Redeployment complete. Starting cleanup...")
+    log_message("Redeployment process complete.\n", region="SYSTEM")
+
+    # Cleanup old instances and security groups
+    log_message("Starting cleanup process...", region="SYSTEM")
+    if old_deployments:
+        for old_region, instances in old_deployments.items():
+            if old_region != region:
+                for inst_id in instances:
+                    terminate_instance(inst_id, old_region)
+                    remove_security_groups(old_region)
+        log_message(
+            "Cleanup complete. Successfully deleted old instances and security groups.\n",
+            region="SYSTEM"
+        )
+    else:
+        log_message("No old instances found to clean up.\n", region="SYSTEM")
+
+
 def deploy():
     """
     Automates instance deployment based on carbon intensity,
     fully non-interactive. Automatically uses the lowest-carbon region,
     then attempts to redeploy if that region differs from what's currently deployed.
     """
+    # 1. Get carbon intensities and show recommendations
+    carbon_data = {
+        aws_region: get_carbon_intensity(map_zone)
+        for aws_region, map_zone in AWS_REGIONS.items()
+    }
 
-    # 1. Find the recommended region (lowest carbon)
-    chosen_region = find_best_region()
-    friendly = REGION_FRIENDLY_NAMES.get(chosen_region, chosen_region)
+    for aws_region, intensity in carbon_data.items():
+        friendly = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
+        print(
+            f"🌍 '{aws_region}' ({friendly}) current carbon intensity: {intensity} gCO₂/kWh.")
+
+    best_region = min(carbon_data, key=carbon_data.get)
+    best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
+    print(f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' "
+          f"({best_friendly}) - {carbon_data[best_region]} gCO₂/kWh.\n")
 
     # 2. Check existing deployments
-    deployments = check_existing_deployments()
+    deployments = {
+        region: instances for region in AWS_REGIONS
+        if (instances := get_old_instances(region))
+    }
 
-    # If an instance is already running in the chosen region, do nothing
-    if chosen_region in deployments:
+    for region, instances in deployments.items():
+        friendly = REGION_FRIENDLY_NAMES.get(region, region)
         print(
-            f"\n✅ No redeployment needed, keeping current state in {chosen_region} ({friendly}).")
+            f"ℹ️ Found running instance(s) in '{region}' ({friendly}): {instances}.\n")
+
+    # Check if we're already in the greenest region
+    if best_region in deployments:
+        print(
+            f"✅ Already in the lowest carbon region available: '{best_region}' ({best_friendly}). No need to redeploy. Exiting.\n")
         log_message(
-            f"No redeployment needed, keeping current state in {chosen_region} ({friendly}).", region=chosen_region)
+            f"Already in the lowest carbon region available: '{best_region}'. No need to redeploy.",
+            region="SYSTEM"
+        )
         return
 
-    # Case 1: No instances are currently running
-    if not deployments:
-        print(
-            f"\nℹ️ No instance deployed yet.\n⏳ Deploying to {chosen_region}...\n")
+    # Log the start of redeployment if needed
+    if deployments:
+        log_message(
+            f"Lower carbon region detected: '{best_region}'. Starting redeployment process...",
+            region="SYSTEM"
+        )
 
-        update_tfvars(chosen_region)
-        run_terraform(chosen_region)
-
-        if instance_ip := get_terraform_output("instance_public_ip"):
-            print(
-                f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
-            if wait_for_http_ok(instance_ip, 80):
-                if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                    update_dns(
-                        instance_ip,
-                        chosen_region,
-                        '⏳ Updating DNS A record ',
-                        ' for DNS to fully propagate...',
-                    )
-                    print(
-                        f"⏳ Started termination of {instance_ip} in {chosen_region}...")
-                    print(
-                        f"✅ DNS record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.")
-                    print("✅ Redeployment process complete.")
-                    log_message(
-                        "Redeployment process complete.\n", region=chosen_region)
-
-            else:
-                print(
-                    "❌ The new instance is not responding on HTTP. Please investigate.")
-        else:
-            print("❌ Failed to retrieve instance details. Check Terraform outputs.")
-        return
-
-    current_best_region = min(
-        deployments.keys(), key=lambda r: get_carbon_intensity(AWS_REGIONS[r])
-    )
-    current_best_friendly = REGION_FRIENDLY_NAMES.get(
-        current_best_region, current_best_region)
-
-    if current_best_region == chosen_region:
-        print(
-            f"\n✅ The currently deployed region '{current_best_region}' ({current_best_friendly}) already has the lowest carbon intensity. No redeployment needed.")
-        # Skip redeployment if it's already in the lowest-carbon region.
-        return
-
-    print(
-        f"\nℹ️ Current instance is deployed in '{current_best_region}' ({current_best_friendly}).")
-    print(f"The lowest-carbon region currently available is '{chosen_region}' ({friendly}). Proceeding with redeployment...\n"
-          )
-    # Proceed with redeployment
-    print(
-        f"🌱 Redeploying to '{chosen_region}' ({friendly})... (Current: '{current_best_region}' ({current_best_friendly}))\n")
-
-    update_tfvars(chosen_region)
-    run_terraform(chosen_region)
-
-    if instance_ip := get_terraform_output("instance_public_ip"):
-        print(
-            f"⏳ Checking HTTP availability on the new instance: {instance_ip}...")
-
-        if wait_for_http_ok(instance_ip, 80):
-            if MYAPP_DOMAIN and HOSTED_ZONE_ID:
-                update_dns(
-                    instance_ip,
-                    chosen_region,
-                    '⏳ Updating DNS A record for ',
-                    's for DNS to fully propagate...',
-                )
-                print(
-                    f"✅ DNS A record updated!\nℹ️ Fully redeployed to '{chosen_region}' ({friendly})!\n\n✅ Application available at: http://{MYAPP_DOMAIN}.\n")
-
-            # Terminate old instances in other regions
-            for reg, instance_ids in deployments.items():
-                if reg != chosen_region:
-                    for inst_id in instance_ids:
-                        terminate_instance(inst_id, reg)
-                        remove_security_groups(reg)
-
-            print("✅ Redeployment process complete.")
-            log_message("Redeployment process complete.", region=chosen_region)
-        else:
-            print(
-                "❌ The new instance is not responding on HTTP. Aborting old-instance termination.\n")
-    else:
-        print("✅ No change needed - you're already in the greenest region.")
+    # 3. Deploy and cleanup
+    deploy_to_region(best_region, deployments)
 
 
 def run_main():
     """Runs the main code and returns execution time."""
-    start_time = time.perf_counter()  # Start the timer
+    start_time = time.perf_counter()
+    deploy()
+    execution_time = time.perf_counter() - start_time
+    print(f"ℹ️ Execution time: {execution_time:.2f} seconds.")
 
-    deploy()  # Run the main logic
-
-    return time.perf_counter() - start_time
+    # Create log message parts
+    time_msg = f"Execution time: {execution_time:.2f} seconds."
+    separator = "-" * 115
+    log_message(
+        f"{time_msg}\n\n{separator}\n",
+        region="SYSTEM"
+    )
+    return execution_time
 
 
 if __name__ == "__main__":
-    execution_time = run_main()
-    print(f"Execution time: {execution_time:.2f} seconds.")
-    log_message(
-        f"Execution time: {execution_time:.2f} seconds.\n\n" + "=" * 116 + "\n", region="TIMER")
+    run_main()
