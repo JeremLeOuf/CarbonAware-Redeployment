@@ -112,7 +112,9 @@ def find_best_region() -> str:
         intensity = get_carbon_intensity(map_zone)
         friendly_name = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
         print(
-            f"🌍 '{aws_region}' ({friendly_name}) current carbon intensity: {intensity} gCO₂/kWh.")
+            f"🌍 '{aws_region}' ({friendly_name}) current carbon intensity: "
+            f"{intensity} gCO₂/kWh."
+        )
         carbon_data[aws_region] = intensity
 
     best_region = min(carbon_data, key=carbon_data.get)
@@ -120,7 +122,8 @@ def find_best_region() -> str:
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
     print(
         f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' "
-        f"({best_friendly}) - {best_intensity} gCO₂/kWh.")
+        f"({best_friendly}) - {best_intensity} gCO₂/kWh."
+    )
     return best_region
 
 # -------------------------------------------------------------------
@@ -163,7 +166,9 @@ def check_existing_deployments():
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
             print(
-                f"ℹ️ Found running instance(s) in '{region}' ({friendly_region}): {instance_ids}.")
+                f"ℹ️ Found running instance(s) in '{region}' "
+                f"({friendly_region}): {instance_ids}."
+            )
             deployments[region] = instance_ids
     return deployments
 
@@ -190,7 +195,8 @@ def terminate_instance(instance_id: str, region: str):
     )
 
     if terminate_result.returncode != 0:
-        error_msg = f"Failed to terminate instance '{instance_id}' in '{region}'. Error: {terminate_result.stderr}"
+        error_msg = (f"Failed to terminate instance '{instance_id}' in '{region}'. "
+                     f"Error: {terminate_result.stderr}")
         print(f"❌ {error_msg}")
         log_message(error_msg, region=region, level="error")
         return
@@ -209,7 +215,8 @@ def terminate_instance(instance_id: str, region: str):
         print(f"✅ {success_msg}\n")
         log_message(success_msg, region=region)
     else:
-        error_msg = f"Wait for instance {instance_id} termination failed. Error: {wait_result.stderr}"
+        error_msg = (f"Wait for instance {instance_id} termination failed. "
+                     f"Error: {wait_result.stderr}")
         print(f"❌ {error_msg}")
         log_message(error_msg, region=region, level="error")
 
@@ -320,7 +327,7 @@ def get_terraform_output(output_var: str):
 # -------------------------------------------------------------------
 
 
-def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
+def wait_for_http_ok(ip_address: str, max_attempts=20) -> bool:
     """
     Poll http://<ip_address> until we get a 200 response or we exhaust max_attempts.
     """
@@ -389,9 +396,12 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
             f"Failed to update DNS record '{domain}'.", region=region, level="error")
     else:
         print(
-            f"ℹ️ Updated DNS A record of {domain} → {new_ip}. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...\n")
+            f"ℹ️ Updated DNS A record of {domain} → {new_ip}. "
+            f"Waiting {DNS_TTL} seconds to ensure complete DNS propagation...\n"
+        )
         log_message(
-            f"Updated DNS A record of '{domain}' to '{new_ip}'. Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
+            f"Updated DNS A record of '{domain}' to '{new_ip}'. "
+            f"Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
             region=region
         )
         # time.sleep(DNS_TTL)
@@ -439,7 +449,8 @@ def deploy_to_region(region: str, old_deployments: dict):
         return
 
     print(
-        f"ℹ️ Checking HTTP availability on the new instance ('{instance_id}')...")
+        f"ℹ️ Checking HTTP availability on the new instance ('{instance_id}')..."
+    )
     log_message(
         f"New instance deployed (IP: '{instance_ip}' - ID: '{instance_id}'). "
         "Running HTTP check before continuing...",
@@ -478,7 +489,8 @@ def deploy_to_region(region: str, old_deployments: dict):
                             region=old_region,
                             level="error"
                         )
-        print("✅ Cleanup complete. Successfully deleted old instances and security groups. Exiting.\n")
+        print("✅ Cleanup complete. "
+              "Successfully deleted old instances and security groups. Exiting.\n")
         log_message(
             "Cleanup complete. Successfully deleted old instances and security groups.\n",
             region="SYSTEM"
@@ -498,7 +510,9 @@ def deploy():
     for aws_region, intensity in carbon_data.items():
         friendly = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
         print(
-            f"🌍 '{aws_region}' ({friendly}) current carbon intensity: {intensity} gCO₂/kWh.")
+            f"🌍 '{aws_region}' ({friendly}) current carbon intensity: "
+            f"{intensity} gCO₂/kWh."
+        )
 
     best_region = min(carbon_data, key=carbon_data.get)
     best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
@@ -514,7 +528,9 @@ def deploy():
     for region, instances in deployments.items():
         friendly = REGION_FRIENDLY_NAMES.get(region, region)
         print(
-            f"ℹ️ Found running instance(s) in '{region}' ({friendly}): {instances}.")
+            f"ℹ️ Found running instance(s) in '{region}' "
+            f"({friendly}): {instances}."
+        )
 
     # 3. Get user decision
     if not get_user_confirmation("\n➡️ Would you like to deploy/redeploy an instance?"):
