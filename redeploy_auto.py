@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+import sys
 
 # Third-party imports
 import requests
@@ -88,6 +89,11 @@ def get_carbon_intensity(region_code: str) -> float:
     """
     headers = {"auth-token": AUTH_TOKEN}
     try:
+        # First, check if we have a valid token
+        if not AUTH_TOKEN:
+            print(f"❌ API ACCESS ERROR: No valid API token provided")
+            return float("inf")
+
         response = requests.get(
             f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}",
             headers=headers,
@@ -97,7 +103,12 @@ def get_carbon_intensity(region_code: str) -> float:
         data = response.json()
         return data.get("carbonIntensity", float("inf"))
     except requests.exceptions.RequestException as exc:
+        # Use stderr to ensure the error is captured in output
+        print(
+            f"❌ API ACCESS ERROR: Failed to get data for {region_code}: {exc}", file=sys.stderr)
         print(f"❌ Error fetching data for {region_code}: {exc}")
+        # Log more prominently for tests to detect
+        print(f"❌ API ACCESS ERROR: Error fetching data for {region_code}")
         return float("inf")
 
 
@@ -252,6 +263,11 @@ def remove_security_groups(region: str):
     """
     Find and delete old 'myapp_sg_<suffix>' groups in the specified region.
     """
+    # Validate region
+    if region not in AWS_REGIONS:
+        raise ValueError(
+            f"Invalid region: {region}. Must be one of {', '.join(AWS_REGIONS.keys())}")
+
     sg_ids = find_old_sgs(region)
     for sg_id in sg_ids:
         cmd = [
@@ -283,6 +299,11 @@ def update_tfvars(region: str):
     Overwrite terraform.tfvars with the chosen region + a new deployment_id
     to force Terraform to create a fresh instance.
     """
+    # Validate region
+    if region not in AWS_REGIONS:
+        raise ValueError(
+            f"Invalid region: {region}. Must be one of {', '.join(AWS_REGIONS.keys())}")
+
     tfvars_path = TERRAFORM_DIR / "terraform.tfvars"
     deployment_id = int(time.time())
 
@@ -368,8 +389,8 @@ def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}.")
     log_message(
-        f"Gave up waiting for a successful HTTP response from {url}",
-        region="N/A",
+        f"Gave up waiting for a successful HTTP response from {url}. Aborting.",
+        region="SYSTEM",
         level="error"
     )
     return False
@@ -414,7 +435,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         print(ret.stderr)
         print(f"❌ Failed to update DNS record {domain}.")
         log_message(
-            f"Failed to update DNS record '{domain}'.",
+            f"Failed to update DNS record '{domain}'!",
             region=region,
             level="error"
         )
@@ -428,7 +449,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
             f"Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
             region=region
         )
-        # time.sleep(DNS_TTL)
+        time.sleep(DNS_TTL)
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
@@ -446,7 +467,12 @@ def deploy_to_region(region: str, old_deployments: dict):
     instance_id = get_terraform_output("instance_id")
 
     if not instance_ip or not instance_id:
-        print("❌ Failed to get instance details from Terraform output")
+        print("❌ Failed to get instance details from Terraform output!")
+        log_message(
+            "Failed to get instance details from Terraform output. Aborting.",
+            region="SYSTEM",
+            level="error"
+        )
         return
 
     print("ℹ️ Checking HTTP availability on the new instance...")
@@ -461,11 +487,20 @@ def deploy_to_region(region: str, old_deployments: dict):
 
     # Wait for HTTP check to complete
     if not wait_for_http_ok(instance_ip):
-        print("❌ New instance failed health check")
+        print("❌ New instance failed health check!")
+        log_message(
+            "New instance failed health check. Aborting.",
+            region="SYSTEM",
+            level="error"
+        )
         return
 
     if not (MYAPP_DOMAIN and HOSTED_ZONE_ID):
-        print("ℹ️ Skipping DNS update - domain or zone ID not configured")
+        print("ℹ️ Skipping DNS update - domain or zone ID not configured!")
+        log_message(
+            "Skipping DNS update - domain or zone ID not configured.",
+            region="SYSTEM"
+        )
         return
 
     # Update DNS record
@@ -487,12 +522,20 @@ def deploy_to_region(region: str, old_deployments: dict):
                 for inst_id in instances:
                     terminate_instance(inst_id, old_region)
                     try:
-                        remove_security_groups(old_region)
+                        if find_old_sgs(old_region):
+                            remove_security_groups(old_region)
+                        else:
+                            print(
+                                f"✅ No security groups found to clean up in {old_region}.")
+                            log_message(
+                                "No security groups found to clean up.", region=old_region)
                     except subprocess.CalledProcessError as e:
                         print(
-                            f"❌ Failed to remove security groups in {old_region}. Error: {e}")
+                            f"❌ Failed to remove security groups in {old_region}. "
+                            f"Error: {e}. Aborting.")
                         log_message(
-                            f"Failed to remove security groups in {old_region}. Error: {e}",
+                            f"Failed to remove security groups in {old_region}. "
+                            f"Error: {e}. Aborting.",
                             region=old_region,
                             level="error"
                         )
@@ -502,8 +545,51 @@ def deploy_to_region(region: str, old_deployments: dict):
             region="SYSTEM"
         )
     else:
-        print("✅ No old instances found to clean up. Exiting.\n")
-        log_message("No old instances found to clean up.\n", region="SYSTEM")
+        handle_no_old_instances(region)
+
+
+def handle_no_old_instances(region):
+    """
+    Handle case when no old instances are found to clean up.
+    Logs appropriate messages and checks for any orphaned security groups
+    across all AWS regions that may need to be cleaned up.
+
+    Args:
+        region (str): The current deployment region (for context)
+    """
+    print("✅ No old instances found to clean up. Exiting.\n")
+    log_message("No old instances found to clean up.\n", region="SYSTEM")
+
+    # Check for any security groups to clean up even if no instances exist
+    print("ℹ️ Checking for security groups to clean up...")
+    log_message("Checking for security groups to clean up...",
+                region="SYSTEM")
+
+    any_sgs_found = False
+    for region in AWS_REGIONS:
+        if old_sgs := find_old_sgs(region):
+            any_sgs_found = True
+            print(
+                f"ℹ️ Found security groups in '{region}' to clean up: {old_sgs}")
+            log_message(
+                f"Found security groups in '{region}' to clean up: {old_sgs}",
+                region=region
+            )
+            try:
+                remove_security_groups(region)
+            except subprocess.CalledProcessError as e:
+                print(
+                    f"❌ Failed to remove security groups in {region}. Error: {e}. Aborting.")
+                log_message(
+                    f"Failed to remove security groups in {region}. Error: {e}. Aborting.",
+                    region=region,
+                    level="error"
+                )
+
+    if not any_sgs_found:
+        print("✅ No security groups found to clean up in any region.")
+        log_message(
+            "No security groups found to clean up in any region.", region="SYSTEM")
 
 
 def deploy():
@@ -513,24 +599,36 @@ def deploy():
     then attempts to redeploy if that region differs from what's currently deployed.
     """
     # 1. Get carbon intensities and show recommendations
-    carbon_data = {
-        aws_region: get_carbon_intensity(map_zone)
-        for aws_region, map_zone in AWS_REGIONS.items()
-    }
+    carbon_data = {}
+    api_accessible = True
 
-    for aws_region, intensity in carbon_data.items():
+    for aws_region, map_zone in AWS_REGIONS.items():
+        intensity = get_carbon_intensity(map_zone)
+        if intensity == float("inf"):
+            api_accessible = False
+        carbon_data[aws_region] = intensity
         friendly = REGION_FRIENDLY_NAMES.get(aws_region, aws_region)
         print(
             f"🌍 '{aws_region}' ({friendly}) current carbon intensity: "
             f"{intensity} gCO₂/kWh."
         )
 
-    best_region = min(carbon_data, key=carbon_data.get)
-    best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
-    print(
-        f"⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' "
-        f"({best_friendly}) - {carbon_data[best_region]} gCO₂/kWh.\n"
-    )
+    if not api_accessible:
+        print("\n⚠️  ElectricityMaps API is not accessible. "
+              "Falling back to default region (eu-west-2).")
+        print("❌ API ACCESS ERROR: Falling back to default region due to API failure")
+        log_message(
+            "ElectricityMaps API not accessible, falling back to default region",
+            region="SYSTEM"
+        )
+        best_region = "eu-west-2"  # Default to London
+    else:
+        best_region = min(carbon_data, key=carbon_data.get)
+        best_friendly = REGION_FRIENDLY_NAMES.get(best_region, best_region)
+        print(
+            f"\n⚡ Recommended AWS Region (lowest carbon intensity): '{best_region}' "
+            f"({best_friendly}) - {carbon_data[best_region]} gCO₂/kWh.\n"
+        )
 
     # 2. Check existing deployments
     deployments = {
@@ -548,20 +646,26 @@ def deploy():
     # Check if we're already in the greenest region
     if best_region in deployments:
         print(
-            f"✅ Already in the lowest carbon region available: '{best_region}' "
-            f"({best_friendly}). No need to redeploy. Exiting.\n"
+            f"✅ Already in the {'lowest carbon' if api_accessible else 'default'} "
+            f"region available: '{best_region}' "
+            f"({REGION_FRIENDLY_NAMES.get(best_region, best_region)}). "
+            "No need to redeploy. Exiting.\n"
         )
         log_message(
-            f"Already in the lowest carbon region available: '{best_region}'. "
-            "No need to redeploy.",
+            f"Already in the {'lowest carbon' if api_accessible else 'default'} "
+            f"region available: '{best_region}'. "
+            "No need to redeploy. Exiting.",
             region="SYSTEM"
         )
         return
 
     # Log the start of redeployment if needed
     if deployments:
+        print(f"ℹ️ {'Lower carbon region detected' if api_accessible else 'Default region'}: "
+              f"'{best_region}'. "
+              "Starting redeployment process...")
         log_message(
-            f"Lower carbon region detected: '{best_region}'. "
+            f"{'Lower carbon region detected' if api_accessible else 'Default region'}: '{best_region}'. "
             "Starting redeployment process...",
             region="SYSTEM"
         )

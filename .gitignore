@@ -27,6 +27,3 @@ terraform/terraform.tfstate.backup
 .DS_Store
 Thumbs.db
 
-# Testing
-test_redeploy.py
-

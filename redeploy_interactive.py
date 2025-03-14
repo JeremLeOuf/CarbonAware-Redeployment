@@ -245,6 +245,11 @@ def remove_security_groups(region: str):
     """
     Find and delete old 'myapp_sg_<suffix>' groups in the specified region.
     """
+    # Validate region
+    if region not in AWS_REGIONS:
+        raise ValueError(
+            f"Invalid region: {region}. Must be one of {', '.join(AWS_REGIONS.keys())}")
+
     sg_ids = find_old_sgs(region)
     for sg_id in sg_ids:
         cmd = [
@@ -260,11 +265,15 @@ def remove_security_groups(region: str):
             cmd, capture_output=True, text=True, check=True)
         if result.returncode == 0:
             print(f"✅ Successfully deleted SG '{sg_id}' in '{region}'.\n")
-            log_message(
-                f"Successfully deleted SG '{sg_id}'.", region=region)
+            log_message(f"Successfully deleted SG '{sg_id}'.", region=region)
         else:
             print(
                 f"❌ Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}")
+            log_message(
+                f"Failed to delete SG '{sg_id}' in '{region}'. Error: {result.stderr}",
+                region=region,
+                level="error"
+            )
 
 
 def update_tfvars(region: str):
@@ -272,6 +281,11 @@ def update_tfvars(region: str):
     Overwrite terraform.tfvars with the chosen region + a new deployment_id
     to force Terraform to create a fresh instance.
     """
+    # Validate region
+    if region not in AWS_REGIONS:
+        raise ValueError(
+            f"Invalid region: {region}. Must be one of {', '.join(AWS_REGIONS.keys())}")
+
     tfvars_path = TERRAFORM_DIR / "terraform.tfvars"
     deployment_id = int(time.time())
 
@@ -327,7 +341,7 @@ def get_terraform_output(output_var: str):
 # -------------------------------------------------------------------
 
 
-def wait_for_http_ok(ip_address: str, max_attempts=20) -> bool:
+def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
     """
     Poll http://<ip_address> until we get a 200 response or we exhaust max_attempts.
     """
@@ -339,18 +353,14 @@ def wait_for_http_ok(ip_address: str, max_attempts=20) -> bool:
                 print(f"✅ HTTP check succeeded for {url} !\n")
                 return True
         except requests.exceptions.RequestException as e:
-            logging.debug("HTTP request exception for %s: %s", url, e)
+            logging.debug("HTTP request exception for %s: %s",
+                          url, e)  # Fix f-string in logging
 
         print(
-            f"⏳ Attempt {attempt}/{max_attempts}: waiting for HTTP 200 from {url}...")
-
-    print(f"❌ Gave up waiting for a successful HTTP response from {url}")
-    log_message(
-        f"Gave up waiting for a successful HTTP response from {url}",
-        region="N/A",
-        level="error"
-    )
-    return False
+            f"⏳ Attempt {attempt}/{max_attempts}: "
+            f"waiting for HTTP 200 from {url}..."
+        )
+        time.sleep(interval)
 
 # -------------------------------------------------------------------
 # DNS Update via Route53
@@ -404,7 +414,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
             f"Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
             region=region
         )
-        # time.sleep(DNS_TTL)
+        # time.sleep(DNS_TTL) - excluded for faster testing
 
 # -------------------------------------------------------------------
 # Main Deployment Logic
