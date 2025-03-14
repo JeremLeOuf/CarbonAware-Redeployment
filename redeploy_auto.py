@@ -16,29 +16,26 @@ import sys
 # Third-party imports
 import requests
 from dotenv import load_dotenv
-# -------------------------------------------------------------------
+
 # Load environment variables (from .env or system environment)
-# -------------------------------------------------------------------
 load_dotenv()
+
+# ElectricityMaps configuration
 ELECTRICITY_MAPS_API_TOKEN = "https://api.electricitymap.org/v3/carbon-intensity/latest"
 AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 
 # DNS updates for Route53:
 HOSTED_ZONE_ID = os.getenv("HOSTED_ZONE_ID", "")
 MYAPP_DOMAIN = os.getenv("DOMAIN_NAME", "")
-DNS_TTL = 60
+DNS_TTL = int(os.getenv("DNS_TTL", "60"))
 
-# -------------------------------------------------------------------
 # Paths
-# -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).parent.resolve()
 TERRAFORM_DIR = SCRIPT_DIR / "terraform"
 LOGS_DIR = Path(__file__).parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)  # Create the logs dir if missing
 
-# -------------------------------------------------------------------
 # AWS Regions + Mapping to Electricity Map Zones
-# -------------------------------------------------------------------
 AWS_REGIONS = {
     "eu-west-1": "IE",    # Ireland
     "eu-west-2": "GB",    # London
@@ -52,9 +49,7 @@ REGION_FRIENDLY_NAMES = {
     "eu-central-1": "Frankfurt"
 }
 
-# -------------------------------------------------------------------
 # Configure logging
-# -------------------------------------------------------------------
 LOG_FILE = str(Path(__file__).parent / "logs/redeploy.log")
 
 logging.basicConfig(
@@ -77,11 +72,8 @@ def log_message(msg, region=None, level="info"):
     else:
         logging.info(msg, extra=log_data)
 
-# -------------------------------------------------------------------
-# Functions for Carbon Intensity + Region Selection
-# -------------------------------------------------------------------
 
-
+# Functions for Carbon intensity + Region selection
 def get_carbon_intensity(region_code: str) -> float:
     """
     Fetch the carbon intensity for a given zone (e.g., 'IE', 'GB', 'DE')
@@ -136,11 +128,8 @@ def find_best_region() -> str:
           f"({best_friendly}) - {carbon_intensity_of_best_region} gCO₂/kWh.")
     return best_region
 
-# -------------------------------------------------------------------
-# Functions to Manage EC2 Instances + Terraform
-# -------------------------------------------------------------------
 
-
+# Functions to manage EC2 Instances + Terraform
 def get_old_instances(region: str):
     """Fetch running instances in the given AWS region tagged 'myapp-instance'."""
     try:
@@ -367,9 +356,7 @@ def get_terraform_output(output_var: str):
     )
     return None
 
-# -------------------------------------------------------------------
-# Health Check
-# -------------------------------------------------------------------
+# HTTP Health Check
 
 
 def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
@@ -401,9 +388,7 @@ def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
     )
     return False
 
-# -------------------------------------------------------------------
 # DNS Update via Route53
-# -------------------------------------------------------------------
 
 
 def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, region="N/A"):
@@ -457,9 +442,36 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         )
         time.sleep(DNS_TTL)
 
-# -------------------------------------------------------------------
+
 # Main Deployment Logic
-# -------------------------------------------------------------------
+
+def cleanup_old_instances(old_deployments: dict, current_region: str):
+    """Clean up old instances and security groups in regions other than current_region."""
+    for old_region, instances in old_deployments.items():
+        if old_region == current_region:
+            continue
+
+        for inst_id in instances:
+            terminate_instance(inst_id, old_region)
+            cleanup_security_groups(old_region)
+
+
+def cleanup_security_groups(region: str):
+    """Clean up security groups in the specified region."""
+    try:
+        if find_old_sgs(region):
+            remove_security_groups(region)
+        else:
+            print(f"✅ No security groups found to clean up in {region}.")
+            log_message("No security groups found to clean up.", region=region)
+    except subprocess.CalledProcessError as e:
+        print(
+            f"❌ Failed to remove security groups in {region}. Error: {e}. Aborting.")
+        log_message(
+            f"Failed to remove security groups in {region}. Error: {e}. Aborting.",
+            region=region,
+            level="error"
+        )
 
 
 def deploy_to_region(region: str, old_deployments: dict):
@@ -523,45 +535,21 @@ def deploy_to_region(region: str, old_deployments: dict):
     # Cleanup old instances and security groups
     log_message("Starting cleanup process...", region="SYSTEM")
     if old_deployments:
-        for old_region, instances in old_deployments.items():
-            if old_region != region:
-                for inst_id in instances:
-                    terminate_instance(inst_id, old_region)
-                    try:
-                        if find_old_sgs(old_region):
-                            remove_security_groups(old_region)
-                        else:
-                            print(
-                                f"✅ No security groups found to clean up in {old_region}.")
-                            log_message(
-                                "No security groups found to clean up.", region=old_region)
-                    except subprocess.CalledProcessError as e:
-                        print(
-                            f"❌ Failed to remove security groups in {old_region}. "
-                            f"Error: {e}. Aborting.")
-                        log_message(
-                            f"Failed to remove security groups in {old_region}. "
-                            f"Error: {e}. Aborting.",
-                            region=old_region,
-                            level="error"
-                        )
+        cleanup_old_instances(old_deployments, region)
         print("✅ Cleanup complete. Deleted old instances and security groups. Exiting.\n")
         log_message(
             "Cleanup complete. Successfully deleted old instances and security groups.\n",
             region="SYSTEM"
         )
     else:
-        handle_no_old_instances(region)
+        handle_no_old_instances()
 
 
-def handle_no_old_instances(region):
+def handle_no_old_instances():
     """
     Handle case when no old instances are found to clean up.
     Logs appropriate messages and checks for any orphaned security groups
     across all AWS regions that may need to be cleaned up.
-
-    Args:
-        region (str): The current deployment region (for context)
     """
     print("✅ No old instances found to clean up. Exiting.\n")
     log_message("No old instances found to clean up.\n", region="SYSTEM")
@@ -572,25 +560,28 @@ def handle_no_old_instances(region):
                 region="SYSTEM")
 
     any_sgs_found = False
-    for region in AWS_REGIONS:
-        if old_sgs := find_old_sgs(region):
-            any_sgs_found = True
+    for region_name in AWS_REGIONS:
+        old_sgs = find_old_sgs(region_name)
+        if not old_sgs:
+            continue
+
+        any_sgs_found = True
+        print(
+            f"ℹ️ Found security groups in '{region_name}' to clean up: {old_sgs}")
+        log_message(
+            f"Found security groups in '{region_name}' to clean up: {old_sgs}",
+            region=region_name
+        )
+        try:
+            remove_security_groups(region_name)
+        except subprocess.CalledProcessError as e:
             print(
-                f"ℹ️ Found security groups in '{region}' to clean up: {old_sgs}")
+                f"❌ Failed to remove security groups in {region_name}. Error: {e}. Aborting.")
             log_message(
-                f"Found security groups in '{region}' to clean up: {old_sgs}",
-                region=region
+                f"Failed to remove security groups in {region_name}. Error: {e}. Aborting.",
+                region=region_name,
+                level="error"
             )
-            try:
-                remove_security_groups(region)
-            except subprocess.CalledProcessError as e:
-                print(
-                    f"❌ Failed to remove security groups in {region}. Error: {e}. Aborting.")
-                log_message(
-                    f"Failed to remove security groups in {region}. Error: {e}. Aborting.",
-                    region=region,
-                    level="error"
-                )
 
     if not any_sgs_found:
         print("✅ No security groups found to clean up in any region.")

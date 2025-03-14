@@ -380,39 +380,33 @@ def check_dns_configuration():
 
 
 def check_hosted_zone():
-    """Check if the Route53 hosted zone exists and verify DNS record configuration."""
-    result = subprocess.run(
-        ["aws", "route53", "get-hosted-zone", "--id", HOSTED_ZONE_ID],
-        capture_output=True,
-        text=True,
-        check=True
-    )
-    # We don't need to use zone_info, just verify the command succeeded
-    test_logger.info("✅ Hosted zone %s exists.", HOSTED_ZONE_ID)
-
-    # Check if domain is properly configured
-    result = subprocess.run(
-        ["aws", "route53", "list-resource-record-sets",
-         "--hosted-zone-id", HOSTED_ZONE_ID,
-         "--query", f"ResourceRecordSets[?Name=='{MYAPP_DOMAIN}']"],
-        capture_output=True,
-        text=True,
-        check=True
-    )
-    if json.loads(result.stdout):
-        test_logger.info("✅ DNS record for %s exists.", MYAPP_DOMAIN)
-    else:
-        test_logger.info(
-            "ℹ️ No DNS record found for %s! (This is normal if no instance is running).",
-            MYAPP_DOMAIN
+    """Check Route53 hosted zone and verify DNS record configuration."""
+    test_logger.info("Checking Route53 hosted zone configuration...")
+    try:
+        # Break long command into multiple lines
+        cmd = [
+            "aws", "route53", "get-hosted-zone",
+            "--id", HOSTED_ZONE_ID,
+            "--query", "HostedZone.Name",
+            "--output", "text",
+            "--no-cli-pager"
+        ]
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True)
+        zone_name = result.stdout.strip()
+        log_test_result(
+            "Hosted Zone Check",
+            "PASSED ✅",
+            f"Found hosted zone: {zone_name}"
         )
-
-    log_test_result(
-        "DNS Configuration",
-        "PASSED ✅",
-        "DNS configuration is properly set up."
-    )
-    return True
+        return True
+    except subprocess.CalledProcessError as e:
+        log_test_result(
+            "Hosted Zone Check",
+            "FAILED ❌",
+            f"Failed to get hosted zone: {e.stderr}"
+        )
+        return False
 
 
 def check_environment_variables():
@@ -455,7 +449,10 @@ def check_terraform_files():
     required_files = [
         "main.tf",
         "variables.tf",
-        "outputs.tf",
+        "outputs.tf"
+    ]
+
+    optional_files = [
         "terraform.tfvars"
     ]
 
@@ -469,6 +466,16 @@ def check_terraform_files():
             test_logger.info("✅ Terraform file exists: %s.", file)
         else:
             test_logger.error("❌ Missing Terraform file: %s.", file)
+
+    for file in optional_files:
+        if (TERRAFORM_DIR / file).exists():
+            test_logger.info("✅ Terraform file exists: %s.", file)
+        else:
+            test_logger.info(
+                "ℹ️ Optional Terraform file not found: %s "
+                "(will be created during deployment).",
+                file
+            )
 
     if missing_files:
         log_test_result(
@@ -667,6 +674,7 @@ def check_security_configuration():
 def test_error_scenarios():
     """Test various error scenarios."""
     test_logger.info("+++ Testing Error Scenarios +++")
+    all_tests_passed = True
 
     # Test 1: Invalid region
     test_logger.info("Testing invalid region scenario...")
@@ -677,7 +685,7 @@ def test_error_scenarios():
             "FAILED ❌",
             "Should have FAILED ❌ with invalid region"
         )
-        return False
+        all_tests_passed = False
     except (subprocess.CalledProcessError, ValueError) as e:
         log_test_result(
             "Invalid Region",
@@ -694,7 +702,7 @@ def test_error_scenarios():
             "FAILED ❌",
             "Should have FAILED with invalid instance ID"
         )
-        return False
+        all_tests_passed = False
     except subprocess.CalledProcessError:
         log_test_result(
             "Invalid Instance ID",
@@ -711,7 +719,7 @@ def test_error_scenarios():
             "FAILED ❌",
             "Should have FAILED with invalid region."
         )
-        return False
+        all_tests_passed = False
     except (subprocess.CalledProcessError, ValueError) as e:
         log_test_result(
             "Invalid Security Group",
@@ -737,12 +745,13 @@ def test_error_scenarios():
             "WARNING",
             f"Error handling missing API token: {str(e)}"
         )
+        all_tests_passed = False
     finally:
         # Restore original token
         if original_token:
             os.environ["ELECTRICITYMAPS_API_TOKEN"] = original_token
 
-    return True
+    return all_tests_passed
 
 # -------------------------------------------------------------------
 # Resource Cleanup
@@ -1096,7 +1105,8 @@ def run_all_tests():
         if not check_func():
             test_logger.error("❌ Pre-test check FAILED ❌: %s.", check_name)
             checks_passed = False
-            if check_name in ["Dependencies", "AWS Configuration", "Terraform Files"]:
+            # Only abort for truly critical checks that would prevent tests from running
+            if check_name in ["Dependencies", "AWS Configuration"]:
                 test_logger.error("Critical check FAILED ❌, aborting tests.")
                 log_test_result(
                     "Test Suite",
