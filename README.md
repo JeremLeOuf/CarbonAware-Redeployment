@@ -151,15 +151,13 @@ python3 redeploy_interactive.py
 
 ### Accessing your application
 
-The script's output should display your instance's public IP.
-Alternatively, obtain your new instance's public IP:
+Obtain your new instance's public IP:
 
 ```bash
 terraform output -raw instance_public_ip
 ```
 
-Visit `http://<instance_public_ip>` in your web browser to access your app.
-Also, try to access your domain name to see if the DNS propagated correctly.
+Visit `http://<instance_public_ip>` in your web browser to access your Flask app.
 
 ---
 
