@@ -535,7 +535,7 @@ def deploy():
         )
 
     # 3. Get user decision
-    if not get_user_confirmation("\n➡️ Would you like to deploy/redeploy an instance?"):
+    if not get_user_confirmation("➡️ Would you like to deploy/redeploy an instance?"):
         return
 
     # 4. Region selection
