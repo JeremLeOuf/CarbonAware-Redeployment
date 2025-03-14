@@ -595,7 +595,8 @@ def handle_no_old_instances(region):
     if not any_sgs_found:
         print("✅ No security groups found to clean up in any region.")
         log_message(
-            "No security groups found to clean up in any region.", region="SYSTEM")
+            "No security groups found to clean up in any region. "
+            "Cleanup complete.\n", region="SYSTEM")
 
 
 def deploy():

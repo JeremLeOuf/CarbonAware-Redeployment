@@ -510,7 +510,8 @@ def deploy_to_region(region: str, old_deployments: dict):
             region="SYSTEM"
         )
     else:
-        log_message("No old instances found to clean up.\n", region="SYSTEM")
+        log_message(
+            "No old instance found to clean up. Cleanup complete.\n", region="SYSTEM")
 
 
 def deploy():
