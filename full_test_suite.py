@@ -188,9 +188,11 @@ def verify_output_patterns(stdout: str, expected_patterns: List[str],
 
 def check_dependencies():
     """Check if all required dependencies are installed."""
-    required_commands = ["aws", "terraform", "python", "python3"]
+    required_commands = ["aws", "terraform"]
+    python_commands = ["python", "python3"]
     missing_deps = []
 
+    # Check for AWS and Terraform
     for cmd in required_commands:
         try:
             subprocess.run([cmd, "--version"], capture_output=True, check=True)
@@ -198,6 +200,20 @@ def check_dependencies():
         except (subprocess.CalledProcessError, FileNotFoundError):
             missing_deps.append(cmd)
             test_logger.error("❌ Missing dependency: %s!", cmd)
+
+    # Check for Python or Python3
+    python_installed = False
+    for cmd in python_commands:
+        try:
+            subprocess.run([cmd, "--version"], capture_output=True, check=True)
+            python_installed = True
+            test_logger.info("✅ Dependency available: %s.", cmd)
+            break  # Exit loop if one is found
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue  # Try the next command
+
+    if not python_installed:
+        missing_deps.append("python or python3")
 
     if missing_deps:
         log_test_result(
