@@ -16,9 +16,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-# -------------------------------------------------------------------
 # Load environment variables (from .env or system environment)
-# -------------------------------------------------------------------
 load_dotenv()
 ELECTRICITY_MAPS_API_TOKEN = "https://api.electricitymap.org/v3/carbon-intensity/latest"
 AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
@@ -26,19 +24,15 @@ AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 # DNS updates for Route53:
 HOSTED_ZONE_ID = os.getenv("HOSTED_ZONE_ID", "")
 MYAPP_DOMAIN = os.getenv("DOMAIN_NAME", "")
-DNS_TTL = 60
+DNS_TTL = int(os.getenv("DNS_TTL", "60"))
 
-# -------------------------------------------------------------------
 # Paths
-# -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).parent.resolve()
 TERRAFORM_DIR = SCRIPT_DIR / "terraform"
 LOGS_DIR = SCRIPT_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)  # Create the logs dir if missing
 
-# -------------------------------------------------------------------
 # AWS Regions + Mapping to Electricity Map Zones
-# -------------------------------------------------------------------
 AWS_REGIONS = {
     "eu-west-1": "IE",    # Ireland
     "eu-west-2": "GB",    # London
@@ -52,9 +46,7 @@ REGION_FRIENDLY_NAMES = {
     "eu-central-1": "Frankfurt"
 }
 
-# -------------------------------------------------------------------
 # Configure logging
-# -------------------------------------------------------------------
 LOG_FILE = str(Path(__file__).parent / "logs/redeploy.log")
 
 logging.basicConfig(
@@ -77,9 +69,8 @@ def log_message(msg, region=None, level="info"):
     else:
         logging.info(msg, extra=log_data)
 
-# -------------------------------------------------------------------
-# Functions for Carbon Intensity + Region Selection
-# -------------------------------------------------------------------
+
+# Functions for Carbon intensity + Region selection
 
 
 def get_carbon_intensity(region_code: str) -> float:
@@ -126,9 +117,8 @@ def find_best_region() -> str:
     )
     return best_region
 
-# -------------------------------------------------------------------
-# Functions to Manage EC2 Instances + Terraform
-# -------------------------------------------------------------------
+
+# Functions to manage EC2 Instances + Terraform
 
 
 def get_old_instances(region: str):
@@ -340,9 +330,7 @@ def get_terraform_output(output_var: str):
         f"❌ Failed to retrieve Terraform output '{output_var}': {result.stderr}")
     return None
 
-# -------------------------------------------------------------------
-# Health Check
-# -------------------------------------------------------------------
+# HTTP Health Check
 
 
 def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
@@ -366,9 +354,10 @@ def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
         )
         time.sleep(interval)
 
-# -------------------------------------------------------------------
+    print(f"❌ Gave up waiting for a successful HTTP response from {url}.")
+    return False
+
 # DNS Update via Route53
-# -------------------------------------------------------------------
 
 
 def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, region="N/A"):
@@ -420,9 +409,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
         )
         # time.sleep(DNS_TTL) - excluded for faster testing
 
-# -------------------------------------------------------------------
 # Main Deployment Logic
-# -------------------------------------------------------------------
 
 
 def get_user_confirmation(message: str) -> bool:
