@@ -27,7 +27,7 @@ cd myapp-terraform
 2. **Install** Python dependencies:
 
 ```bash
-pip install python-dotenv requests
+pip install -r requirements.txt
 ```
 
 or use a virtual environment:
@@ -35,7 +35,7 @@ or use a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install python-dotenv requests
+pip install -r requirements.txt
 ```
 
 3. Create a `.env` file (not committed) to store environment variables:
@@ -65,7 +65,7 @@ python redeploy.py
 ```
 
 - It will ask if you want to deploy to the recommended region.
-- If “yes”, it updates terraform.tfvars and applies Terraform.
+- If “yes”, it updates `terraform.tfvars` and applies Terraform.
 - After creation, it checks HTTP availability on port 80.
 
 6. Get the public IP:
@@ -77,3 +77,29 @@ terraform output -raw instance_public_ip
 ```
 
 Visit http://<instance_public_ip> to see your Dockerized Flask app.
+
+## Deployment Details
+
+- The application is deployed using Terraform modules for networking and compute resources.
+- Security groups are created dynamically to allow HTTP traffic.
+- The deployment script automatically handles instance termination and cleanup of old resources.
+
+## Logging
+
+- Logs for the deployment process are stored in the `logs` directory.
+- Test results and AWS interactions are logged for debugging and monitoring purposes.
+
+## Notes
+
+- Ensure that your AWS credentials have the necessary permissions to create and manage EC2 instances, security groups, and Route53 records.
+- The application is designed to be carbon-aware, selecting the AWS region with the lowest carbon intensity for deployment.
+- The deployment process includes a health check to ensure the application is running correctly after deployment.
+
+## Testing
+
+- A comprehensive test suite is available in `full_test_suite.py` to simulate different deployment scenarios and verify the behavior of the redeploy scripts.
+- Ensure all dependencies are installed before running the tests.
+
+## Contributing
+
+Feel free to submit issues or pull requests for improvements or bug fixes.
