@@ -1,19 +1,19 @@
-# MyApp Terraform Deployment
+# Automated dynamic carbon-aware Terraform-based deployment solution
 
-This repository provides a streamlined, automated solution for deploying a Dockerized Flask application to AWS EC2 instances using Terraform. The deployment is carbon-aware, selecting AWS regions based on their carbon intensity.
+This repository provides a streamlined, automated solution for deploying a Dockerized application to AWS EC2 instances using Terraform. The deployment is carbon-aware, selecting AWS regions based on their carbon intensity.
 
 ---
 
 ## Features
 
-- **Terraform Configurations**: Automated deployment of Flask applications onto AWS EC2 instances.
-- **Carbon-Aware Deployment**: Python scripts interact with Electricity Maps API to identify the AWS region with the lowest carbon intensity.
-- **Dynamic Updates**: Automatically updates `terraform.tfvars` to reflect region selections.
-- **Automated Deployment and Redeployment**: Deploy new infrastructure seamlessly or redeploy existing infrastructure based on carbon metrics.
+- **Terraform configurations**: Automated deployment of Flask applications onto AWS EC2 instances.
+- **Carbon-aware deployment**: Python scripts interact with Electricity Maps API to identify the AWS region with the lowest carbon intensity.
+- **Dynamic updates**: Automatically updates `terraform.tfvars` to reflect region selections.
+- **Automated deployment and redeployment**: Deploy new infrastructure seamlessly or redeploy existing infrastructure based on carbon metrics.
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 CarbonAware-Redeployment/
@@ -39,13 +39,13 @@ CarbonAware-Redeployment/
 └── README.md
 ```
 
-*Note:* The `venv/` directory and `.env` files are intentionally excluded from version control.
+*Note:* The `venv/` directory and `.env` files are intentionally excluded from version control. You should create them yourself (will be explained going forward).
 
 ---
 
 ## Prerequisites
 
-Ensure the following are installed and correctly configured:
+Ensure the following are installed and correctly configured on the machine you plan to run this solution on :
 
 - **AWS CLI (v2+)**: [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   - Configure AWS CLI with proper permissions:
@@ -71,16 +71,16 @@ Ensure the following are installed and correctly configured:
 
 ---
 
-## Setup Instructions
+## Setup instructions
 
-### 1. Clone Repository
+### 1. Clone this repository
 
 ```bash
-git clone https://github.com/YourUsername/myapp-terraform.git
-cd myapp-terraform
+git clone https://github.com/JeremLeOuf/CarbonAware-Redeployment.git
+cd CarbonAware-Redeployment
 ```
 
-### 2. Set Up Virtual Environment
+### 2. Set up a virtual environment
 
 Create and activate your Python virtual environment:
 
@@ -95,7 +95,7 @@ venv\Scripts\activate           # Windows
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+### 3. Configure environment variables
 
 Create a `.env` file in the project root to store sensitive credentials:
 
@@ -116,7 +116,7 @@ Alternatively, export these as environment variables directly.
 
 ### 4. Initialize Terraform
 
-Navigate into the Terraform directory and initialize:
+Navigate into the Terraform directory (`cd terraform/`) and initialize:
 
 ```bash
 cd terraform
@@ -124,7 +124,7 @@ terraform init
 cd ..
 ```
 
-### 5. Run Test Suite
+### 5. Run the test suite
 
 Before deploying, ensure your scripts and Terraform configurations are working correctly:
 
@@ -133,12 +133,13 @@ python3 full_test_suite.py
 ```
 
 Verify all tests pass before proceeding to deployment.
+If some tests are failing, check the logs to investigate why.
 
 ---
 
-## Deploying the Application
+## Deploying the application
 
-Run the interactive deployment script to select the optimal region based on carbon intensity:
+Run the interactive deployment script to select the initial region where you want to deploy your application based on carbon intensity recommendations:
 
 ```bash
 python3 redeploy_interactive.py
@@ -148,7 +149,7 @@ python3 redeploy_interactive.py
 - Confirm to automatically update `terraform.tfvars` and deploy.
 - A health check verifies HTTP availability on port 80 after deployment.
 
-### Accessing Your Application
+### Accessing your application
 
 Obtain your new instance's public IP:
 
@@ -160,7 +161,7 @@ Visit `http://<instance_public_ip>` in your web browser to access your Flask app
 
 ---
 
-## Deployment Details
+## Deployment details
 
 - Modular Terraform deployment architecture for compute and networking.
 - Automatic security group configuration for HTTP traffic.
