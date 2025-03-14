@@ -1,18 +1,22 @@
-# MyApp Terraform Deployment
+# Automated dynamic carbon-aware Terraform-based deployment solution
 
-This repository contains:
+This repository provides a streamlined, automated solution for deploying a Dockerized application to AWS EC2 instances using Terraform. The deployment is carbon-aware, selecting AWS regions based on their carbon intensity.
 
-- **Terraform** configurations for deploying a Dockerized Flask app on AWS EC2.
-- A Python script (`redeploy.py`) that:
-  1. Checks carbon intensity via Electricity Maps.
-  2. Chooses the greenest AWS region.
-  3. Updates `terraform.tfvars`.
-  4. Runs Terraform to deploy or redeploy the EC2 instance.
+---
 
-## Project Structure
+## Features
+
+- **Terraform configurations**: Automated deployment of Flask applications onto AWS EC2 instances.
+- **Carbon-aware deployment**: Python scripts interact with Electricity Maps API to identify the AWS region with the lowest carbon intensity.
+- **Dynamic updates**: Automatically updates `terraform.tfvars` to reflect region selections.
+- **Automated deployment and redeployment**: Deploy new infrastructure seamlessly or redeploy existing infrastructure based on carbon metrics.
+
+---
+
+## Project structure
 
 ```
-myapp-terraform/
+CarbonAware-Redeployment/
 ├── terraform/
 │   ├── main.tf
 │   ├── variables.tf
@@ -31,126 +35,161 @@ myapp-terraform/
 ├── redeploy_auto.py
 ├── full_test_suite.py
 ├── requirements.txt
+├── logs/
 └── README.md
 ```
 
+*Note:* The `venv/` directory and `.env` files are intentionally excluded from version control. You should create them yourself (will be explained going forward).
+
+---
+
 ## Prerequisites
 
-1. **AWS CLI** installed and configured with credentials.
-2. **Terraform** installed (>= 1.0).
-3. **Python 3** and `pip` for installing dependencies.
+Ensure the following are installed and correctly configured on the machine you plan to run this solution on :
 
-## Setup Instructions
+- **AWS CLI (v2+)**: [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  - Configure AWS CLI with proper permissions:
 
-1. **Clone** this repository:
+    ```bash
+    aws configure
+    ```
+  
+- **Terraform (v1.0+)**: [Terraform Downloads](https://www.terraform.io/downloads)
+  - Verify installation:
 
-   ```bash
-   git clone https://github.com/YourUsername/myapp-terraform.git
-   cd myapp-terraform
-   ```
+    ```bash
+    terraform -version
+    ```
 
-2. **Install** Python dependencies:
+- **Python 3.8+ and pip**:
+  - Verify installation:
+
+    ```bash
+    python3 --version
+    pip --version
+    ```
+
+---
+
+## Setup instructions
+
+### 1. Clone this repository
 
 ```bash
-pip install python-dotenv requests
+git clone https://github.com/JeremLeOuf/CarbonAware-Redeployment.git
+cd CarbonAware-Redeployment
 ```
 
-   or use a virtual environment:
+### 2. Set up a virtual environment
+
+Create and activate your Python virtual environment:
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install python-dotenv requests
+python3 -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate        # macOS/Linux
+venv\Scripts\activate           # Windows
+
+# Install Python dependencies
+pip install -r requirements.txt
 ```
 
-3. Create a `.env` file (not committed) to store environment variables:
+### 3. Configure environment variables
 
-   ```bash
-   # .env example
-   ELECTRICITYMAPS_API_TOKEN="YOUR_API_TOKEN"
-   HOSTED_ZONE_ID="YOUR_ROUTE53_ZONE_ID"
-   DOMAIN_NAME="myapp.example.com"
-   DNS_TTL="60"
-   ```
+Create a `.env` file in the project root to store sensitive credentials:
 
-   You can also export them as environment variables if you prefer.
+```bash
+touch .env
+```
 
-4. Initialize Terraform (the first time):
+Populate `.env` with your details:
 
-   ```bash
-   cd terraform
-   terraform init
-   cd ..
-   ```
+```ini
+ELECTRICITYMAPS_API_TOKEN="YOUR_API_TOKEN"
+HOSTED_ZONE_ID="YOUR_ROUTE53_ZONE_ID"
+DOMAIN_NAME="myapp.example.com"
+DNS_TTL="60"
+```
 
-5. Run the Redeploy script:
+Alternatively, export these as environment variables directly.
 
-   ```bash
-   python redeploy_interactive.py
-   ```
+### 4. Initialize Terraform
 
-- It will ask if you want to deploy to the recommended region.
-- If “yes”, it updates terraform.tfvars and applies Terraform.
-- After creation, it checks HTTP availability on port 80.
+Navigate into the Terraform directory (`cd terraform/`) and initialize:
 
-6. Get the public IP:
+```bash
+cd terraform
+terraform init
+cd ..
+```
 
-   - The script prints the new instance's IP or you can run:
+### 5. Run the test suite
 
-   ```bash
-   terraform output -raw instance_public_ip
-   ```
+Before deploying, ensure your scripts and Terraform configurations are working correctly:
 
-   Visit http://<instance_public_ip> to see your Dockerized Flask app.
+```bash
+python3 full_test_suite.py
+```
 
-## Deployment Details
+Verify all tests pass before proceeding to deployment.
+If some tests are failing, check the logs to investigate why.
 
-- The application is deployed using Terraform modules for networking and compute resources.
-- Security groups are created dynamically to allow HTTP traffic.
-- The deployment script automatically handles instance termination and cleanup of old resources.
+---
+
+## Deploying the application
+
+Run the interactive deployment script to select the initial region where you want to deploy your application based on carbon intensity recommendations:
+
+```bash
+python3 redeploy_interactive.py
+```
+
+- The script recommends the AWS region with the lowest carbon intensity.
+- Confirm to automatically update `terraform.tfvars` and deploy.
+- A health check verifies HTTP availability on port 80 after deployment.
+
+### Accessing your application
+
+Obtain your new instance's public IP:
+
+```bash
+terraform output -raw instance_public_ip
+```
+
+Visit `http://<instance_public_ip>` in your web browser to access your Flask app.
+
+---
+
+## Deployment details
+
+- Modular Terraform deployment architecture for compute and networking.
+- Automatic security group configuration for HTTP traffic.
+- Built-in cleanup of older EC2 instances and associated resources upon redeployment.
 
 ## Logging
 
-- Logs for the deployment process are stored in the `logs` directory.
-- Test results and AWS interactions are logged for debugging and monitoring purposes.
+- All deployment processes, AWS interactions, and test outcomes are logged under the `logs` directory for debugging and monitoring.
 
 ## Notes
 
-- Ensure that your AWS credentials have the necessary permissions to create and manage EC2 instances, security groups, and Route53 records.
-- The application is designed to be carbon-aware, selecting the AWS region with the lowest carbon intensity for deployment.
-- The deployment process includes a health check to ensure the application is running correctly after deployment.
+- AWS credentials require permissions to manage EC2, security groups, and Route53.
+- Deployments prioritize carbon efficiency by selecting regions based on real-time carbon intensity.
+- Post-deployment health checks ensure application availability and functionality.
+
+---
 
 ## Testing
 
-- A comprehensive test suite is available in `full_test_suite.py` to simulate different deployment scenarios and verify the behavior of the redeploy scripts.
-- Ensure all dependencies are installed before running the tests.
+- Comprehensive testing via `full_test_suite.py` ensures reliability.
+- Simulates diverse deployment scenarios to pinpoint potential issues.
+
+---
 
 ## Contributing
 
-Feel free to submit issues or pull requests for improvements or bug fixes.
+Contributions, improvements, and bug fixes are welcome. Submit pull requests or raise issues to collaborate.
 
-## Deployment Details
+---
 
-- The application is deployed using Terraform modules for networking and compute resources.
-- Security groups are created dynamically to allow HTTP traffic.
-- The deployment script automatically handles instance termination and cleanup of old resources.
-
-## Logging
-
-- Logs for the deployment process are stored in the `logs` directory.
-- Test results and AWS interactions are logged for debugging and monitoring purposes.
-
-## Notes
-
-- Ensure that your AWS credentials have the necessary permissions to create and manage EC2 instances, security groups, and Route53 records.
-- The application is designed to be carbon-aware, selecting the AWS region with the lowest carbon intensity for deployment.
-- The deployment process includes a health check to ensure the application is running correctly after deployment.
-
-## Testing
-
-- A comprehensive test suite is available in `full_test_suite.py` to simulate different deployment scenarios and verify the behavior of the redeploy scripts.
-- Ensure all dependencies are installed before running the tests.
-
-## Contributing
-
-Feel free to submit issues or pull requests for improvements or bug fixes.
+🌱 **Deploy sustainably, automate confidently, and contribute proactively!**
