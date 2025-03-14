@@ -188,7 +188,7 @@ def verify_output_patterns(stdout: str, expected_patterns: List[str],
 
 def check_dependencies():
     """Check if all required dependencies are installed."""
-    required_commands = ["aws", "terraform", "python"]
+    required_commands = ["aws", "terraform", "python", "python3"]
     missing_deps = []
 
     for cmd in required_commands:
