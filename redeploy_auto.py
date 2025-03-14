@@ -91,7 +91,7 @@ def get_carbon_intensity(region_code: str) -> float:
     try:
         # First, check if we have a valid token
         if not AUTH_TOKEN:
-            print(f"❌ API ACCESS ERROR: No valid API token provided")
+            print("❌ API ACCESS ERROR: No valid API token provided")
             return float("inf")
 
         response = requests.get(
@@ -169,12 +169,18 @@ def check_existing_deployments():
     Returns a dict: { region: [instance_ids], ... }.
     """
     deployments = {}
+    found_instances = []
+
     for region in AWS_REGIONS:  # Iterate directly over dictionary
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
-            print(f"✅ Found running instance(s) in '{region}' "
-                  f"({friendly_region}): {instance_ids}.")
+            found_instances.append(
+                f"'{region}' ({friendly_region}): {instance_ids}")
             deployments[region] = instance_ids
+
+    if found_instances:
+        print(f"✅ Found running instance(s) in: {', '.join(found_instances)}.")
+
     return deployments
 
 
@@ -665,8 +671,8 @@ def deploy():
               f"'{best_region}'. "
               "Starting redeployment process...")
         log_message(
-            f"{'Lower carbon region detected' if api_accessible else 'Default region'}: '{best_region}'. "
-            "Starting redeployment process...",
+            f"{'Lower carbon region detected' if api_accessible else 'Default region'}: "
+            f"'{best_region}'. Starting redeployment process...",
             region="SYSTEM"
         )
 

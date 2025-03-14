@@ -158,18 +158,22 @@ def get_old_instances(region: str):
 
 def check_existing_deployments():
     """
-    Check all AWS_REGIONS for a running instance with the tag 'myapp-instance'.
+    Check all AWS regions for running instances with the tag 'myapp-instance'.
     Returns a dict: { region: [instance_ids], ... }.
     """
     deployments = {}
-    for region in AWS_REGIONS:
+    found_instances = []
+
+    for region in AWS_REGIONS:  # Iterate directly over dictionary
         if instance_ids := get_old_instances(region):
             friendly_region = REGION_FRIENDLY_NAMES.get(region, region)
-            print(
-                f"ℹ️ Found running instance(s) in '{region}' "
-                f"({friendly_region}): {instance_ids}."
-            )
+            found_instances.append(
+                f"'{region}' ({friendly_region}): {instance_ids}")
             deployments[region] = instance_ids
+
+    if found_instances:
+        print(f"✅ Found running instance(s) in: {', '.join(found_instances)}.")
+
     return deployments
 
 
@@ -538,7 +542,7 @@ def deploy():
     for region, instances in deployments.items():
         friendly = REGION_FRIENDLY_NAMES.get(region, region)
         print(
-            f"ℹ️ Found running instance(s) in '{region}' "
+            f"ℹ️ Found running instance in '{region}' "
             f"({friendly}): {instances}."
         )
 
