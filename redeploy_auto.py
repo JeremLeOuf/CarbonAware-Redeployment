@@ -536,9 +536,15 @@ def deploy_to_region(region: str, old_deployments: dict):
     log_message("Starting cleanup process...", region="SYSTEM")
     if old_deployments:
         cleanup_old_instances(old_deployments, region)
-        print("✅ Cleanup complete. Deleted old instances and security groups. Exiting.\n")
+        print("✅ Cleanup complete. Deleted old instances and security groups.")
+        print(
+            f"Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n")
         log_message(
-            "Cleanup complete. Successfully deleted old instances and security groups.\n",
+            "Cleanup complete. Successfully deleted old instances and security groups.",
+            region="SYSTEM"
+        )
+        log_message(
+            f"ℹ️ Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n",
             region="SYSTEM"
         )
     else:
@@ -661,7 +667,7 @@ def deploy():
     if deployments:
         print(f"ℹ️ {'Lower carbon region detected' if api_accessible else 'Default region'}: "
               f"'{best_region}'. "
-              "Starting redeployment process...")
+              "Starting redeployment process...\n")
         log_message(
             f"{'Lower carbon region detected' if api_accessible else 'Default region'}: "
             f"'{best_region}'. Starting redeployment process...",
