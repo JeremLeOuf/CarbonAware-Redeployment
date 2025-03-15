@@ -162,8 +162,7 @@ def check_existing_deployments():
             deployments[region] = instance_ids
 
     if found_instances:
-        print(
-            f"✅ Found running instance(s) in: {', '.join(found_instances)}\n.")
+        print(f"✅ Found running instance(s) in: {', '.join(found_instances)}.")
 
     return deployments
 
@@ -447,144 +446,59 @@ def deploy_to_region(region: str, old_deployments: dict):
     instance_id = get_terraform_output("instance_id")
 
     if not instance_ip or not instance_id:
-        print("❌ Failed to get instance details from Terraform output!")
-        log_message(
-            "Failed to get instance details from Terraform output. Aborting.",
-            region="SYSTEM",
-            level="error"
-        )
+        print("❌ Failed to get instance details from Terraform output")
         return
 
-    print("ℹ️ Checking HTTP availability on the new instance...")
-    log_message(
-        f"New instance deployed. IP: '{instance_ip}'. ID: '{instance_id}'.",
-        region=region
+    print(
+        f"ℹ️ Checking HTTP availability on the new instance ('{instance_id}')..."
     )
     log_message(
-        "Running HTTP check before continuing, waiting for HTTP 200 response...",
+        f"New instance deployed (IP: '{instance_ip}' - ID: '{instance_id}'). "
+        "Running HTTP check before continuing...",
         region=region
     )
 
     # Wait for HTTP check to complete
     if not wait_for_http_ok(instance_ip):
-        print("❌ New instance failed health check!")
-        log_message(
-            "New instance failed health check. Aborting.",
-            region="SYSTEM",
-            level="error"
-        )
+        print("❌ New instance failed health check")
         return
 
     if not (MYAPP_DOMAIN and HOSTED_ZONE_ID):
-        print("ℹ️ Skipping DNS update - domain or zone ID not configured!")
-        log_message(
-            "Skipping DNS update - domain or zone ID not configured.",
-            region="SYSTEM"
-        )
+        print("ℹ️ Skipping DNS update - domain or zone ID not configured")
         return
 
     # Update DNS record
-    update_dns_record(
-        new_ip=instance_ip,
-        domain=MYAPP_DOMAIN,
-        zone_id=HOSTED_ZONE_ID,
-        ttl=DNS_TTL,
-        region=region
-    )
+    update_dns_record(instance_ip, MYAPP_DOMAIN,
+                      HOSTED_ZONE_ID, DNS_TTL, region=region)
     print("ℹ️ Redeployment complete. Starting cleanup...")
     log_message("Redeployment process complete.\n", region="SYSTEM")
 
     # Cleanup old instances and security groups
     log_message("Starting cleanup process...", region="SYSTEM")
     if old_deployments:
-        cleanup_old_instances(old_deployments, region)
-        print("✅ Cleanup complete. Deleted old instances and security groups.")
-        print(
-            f"ℹ️ Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n")
+        for old_region, instances in old_deployments.items():
+            if old_region != region:
+                for inst_id in instances:
+                    terminate_instance(inst_id, old_region)
+                    try:
+                        remove_security_groups(old_region)
+                    except subprocess.CalledProcessError as e:
+                        print(
+                            f"❌ Failed to remove security groups in {old_region}. Error: {e}")
+                        log_message(
+                            f"Failed to remove security groups in {old_region}. Error: {e}",
+                            region=old_region,
+                            level="error"
+                        )
+        print("✅ Cleanup complete. "
+              "Successfully deleted old instances and security groups. Exiting.\n")
         log_message(
-            "Cleanup complete. Successfully deleted old instances and security groups.",
-            region="SYSTEM"
-        )
-        log_message(
-            f"Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n",
+            "Cleanup complete. Successfully deleted old instances and security groups.\n",
             region="SYSTEM"
         )
     else:
-        handle_no_old_instances()
-
-
-def cleanup_old_instances(old_deployments: dict, current_region: str):
-    """Clean up old instances and security groups in regions other than current_region."""
-    for old_region, instances in old_deployments.items():
-        if old_region == current_region:
-            continue
-
-        for inst_id in instances:
-            terminate_instance(inst_id, old_region)
-            cleanup_security_groups(old_region)
-
-
-def cleanup_security_groups(region: str):
-    """Clean up security groups in the specified region."""
-    try:
-        if find_old_sgs(region):
-            remove_security_groups(region)
-        else:
-            print(f"✅ No security groups found to clean up in {region}.")
-            log_message("No security groups found to clean up.", region=region)
-    except subprocess.CalledProcessError as e:
-        print(
-            f"❌ Failed to remove security groups in {region}. Error: {e}. Aborting.")
         log_message(
-            f"Failed to remove security groups in {region}. Error: {e}. Aborting.",
-            region=region,
-            level="error"
-        )
-
-
-def handle_no_old_instances():
-    """
-    Handle case when no old instances are found to clean up.
-    Logs appropriate messages and checks for any orphaned security groups
-    across all AWS regions that may need to be cleaned up.
-    """
-    print("✅ No old instances found to clean up. Exiting.\n")
-    log_message("No old instances found to clean up.\n", region="SYSTEM")
-
-    # Check for any security groups to clean up even if no instances exist
-    print("ℹ️ Checking for security groups to clean up...")
-    log_message("Checking for security groups to clean up...",
-                region="SYSTEM")
-
-    any_sgs_found = False
-    for region_name in AWS_REGIONS:
-        old_sgs = find_old_sgs(region_name)
-        if not old_sgs:
-            continue
-
-        any_sgs_found = True
-        print(
-            f"ℹ️ Found security groups in '{region_name}' to clean up: {old_sgs}")
-        log_message(
-            f"Found security groups in '{region_name}' to clean up: {old_sgs}",
-            region=region_name
-        )
-        try:
-            remove_security_groups(region_name)
-        except subprocess.CalledProcessError as e:
-            print(
-                f"❌ Failed to remove security groups in {region_name}. Error: {e}. Aborting.")
-            log_message(
-                f"Failed to remove security groups in {region_name}. Error: {e}. Aborting.",
-                region=region_name,
-                level="error"
-            )
-
-    if not any_sgs_found:
-        print("✅ No security groups found to clean up in any region.")
-        log_message(
-            "No security groups found to clean up in any region. "
-            "Cleanup complete. Done.\n", region="SYSTEM")
+            "No old instance found to clean up. Cleanup complete.\n", region="SYSTEM")
 
 
 def deploy():
@@ -617,7 +531,7 @@ def deploy():
         friendly = REGION_FRIENDLY_NAMES.get(region, region)
         print(
             f"ℹ️ Found running instance in '{region}' "
-            f"({friendly}): {instances}.\n"
+            f"({friendly}): {instances}."
         )
 
     # 3. Get user decision
