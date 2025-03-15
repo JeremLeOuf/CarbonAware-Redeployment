@@ -22,6 +22,6 @@ module "networking" {
 module "compute" {
   source            = "./modules/compute"
   aws_region        = var.aws_region
-  amis             = var.amis
+  amis              = var.amis
   security_group_id = module.networking.security_group_id
 }
