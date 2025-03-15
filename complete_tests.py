@@ -235,31 +235,45 @@ def cleanup_all_resources():
 
 
 def check_dependencies() -> bool:
-    """Checks for required dependencies."""
+    """
+    Checks for required dependencies.
+
+    This function verifies that the necessary AWS CLI, Terraform, and Python
+    dependencies are installed and available in the system's PATH.
+    """
     scenario = "Dependency Check"
-    lines, missing = [], []
+    lines = []
+    missing = []
+
+    # Check for required non-Python commands
     for cmd in ["aws", "terraform"]:
         try:
             subprocess.run([cmd, "--version"], check=True, capture_output=True)
             lines.append(f"{cmd} available ✅")
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             lines.append(f"{cmd} missing ❌")
             missing.append(cmd)
-    python_found = False
-    for p in ["python", "python3"]:
+
+    # Check for either 'python' or 'python3'
+    python_found = None
+    for candidate in ["python", "python3"]:
         try:
-            subprocess.run([p, "--version"], check=True, capture_output=True)
-            lines.append(f"{p} available ✅")
-            python_found = True
+            subprocess.run([candidate, "--version"],
+                           check=True, capture_output=True)
+            python_found = candidate
+            lines.append(f"{python_found} available ✅")
             break
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             continue
+
     if not python_found:
         missing.append("python or python3")
+
     if missing:
         log_scenario(scenario, lines, "FAILED ❌",
                      f"Missing: {', '.join(missing)}")
         return False
+
     log_scenario(scenario, lines, "PASSED ✅",
                  "All dependencies are installed.")
     return True

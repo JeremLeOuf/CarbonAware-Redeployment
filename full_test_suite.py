@@ -32,7 +32,7 @@ from redeploy_auto import (
     run_terraform,
     TERRAFORM_DIR,
     deploy,
-    ELECTRICITY_MAPS_API_TOKEN,
+    ELECTRICITY_MAPS_API_URL,
     AUTH_TOKEN,
     HOSTED_ZONE_ID,
     MYAPP_DOMAIN,
@@ -340,7 +340,7 @@ def check_electricity_maps_api():
         # Test API endpoint for each region
         for region, zone in AWS_REGIONS.items():
             response = requests.get(
-                f"{ELECTRICITY_MAPS_API_TOKEN}?zone={zone}",
+                f"{ELECTRICITY_MAPS_API_URL}?zone={zone}",
                 headers=headers,
                 timeout=10
             )
