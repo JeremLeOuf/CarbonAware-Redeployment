@@ -5,6 +5,7 @@ Ensures identical console & file output.
 Logs start with "Cleared test results log file" then "Starting pre-tests checks..."
 One scenario block per check/test.
 """
+# To run: pytest -s -v --tb=short complete_tests.py
 
 import contextlib
 import os
