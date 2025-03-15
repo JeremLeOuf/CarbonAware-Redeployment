@@ -126,23 +126,22 @@ def get_old_instances(region: str):
     try:
         cmd = [
             "aws", "ec2", "describe-instances",
+            "--filters", "Name=instance-state-name,Values=running",
             "--region", region,
-            "--filters",
-            "Name=tag:Name,Values=myapp-instance",
-            "Name=instance-state-name,Values=running",
             "--query", "Reservations[*].Instances[*].[InstanceId]",
-            "--output", "text", "--no-cli-pager"
+            "--output", "text",
+            "--no-cli-pager"
         ]
         result = subprocess.run(
             cmd, capture_output=True, text=True, check=True)
-        instances = result.stdout.split()
-        return instances or []
+        return result.stdout.strip().split()
     except subprocess.CalledProcessError as e:
         log_message(
-            f"Error fetching instances in {region}: {e}",
+            f"Error fetching instances in '{region}': {e}",
             region=region,
             level="error"
         )
+        print(f"❌ Error retrieving instances: {e}")
         return []
 
 
