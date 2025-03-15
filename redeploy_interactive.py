@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 # Load environment variables (from .env or system environment)
 load_dotenv()
-ELECTRICITY_MAPS_API_TOKEN = "https://api.electricitymap.org/v3/carbon-intensity/latest"
+ELECTRICITY_MAPS_API_ENDPOINT = "https://api.electricitymap.org/v3/carbon-intensity/latest"
 AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 
 # DNS updates for Route53:
@@ -32,14 +32,14 @@ TERRAFORM_DIR = SCRIPT_DIR / "terraform"
 LOGS_DIR = SCRIPT_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)  # Create the logs dir if missing
 
-# AWS Regions + Mapping to Electricity Map Zones
+# AWS Regions mapped to ElectricityMaps API zones
 AWS_REGIONS = {
     "eu-west-1": "IE",    # Ireland
     "eu-west-2": "GB",    # London
     "eu-central-1": "DE"  # Frankfurt
 }
 
-# Friendly names for each region
+# Friendly names for each region (for clarity)
 REGION_FRIENDLY_NAMES = {
     "eu-west-1": "Ireland",
     "eu-west-2": "London",
@@ -71,8 +71,6 @@ def log_message(msg, region=None, level="info"):
 
 
 # Functions for Carbon intensity + Region selection
-
-
 def get_carbon_intensity(region_code: str) -> float:
     """
     Fetch the carbon intensity for a given zone (e.g., 'IE', 'GB', 'DE')
@@ -81,7 +79,7 @@ def get_carbon_intensity(region_code: str) -> float:
     headers = {"auth-token": AUTH_TOKEN}
     try:
         response = requests.get(
-            f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}",
+            f"{ELECTRICITY_MAPS_API_ENDPOINT}?zone={region_code}",
             headers=headers,
             timeout=10
         )
