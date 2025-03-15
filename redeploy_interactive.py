@@ -406,7 +406,7 @@ def update_dns_record(new_ip: str, domain: str, zone_id: str, ttl: int = 60, reg
             f"Waiting {DNS_TTL} seconds to ensure complete DNS propagation...",
             region=region
         )
-        # time.sleep(DNS_TTL) - excluded for faster testing
+        time.sleep(DNS_TTL)
 
 # Main Deployment Logic
 
