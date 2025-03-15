@@ -27,3 +27,4 @@ terraform/terraform.tfstate.backup
 .DS_Store
 Thumbs.db
 
+full_test_suite.py

@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ElectricityMaps configuration
-ELECTRICITY_MAPS_API_TOKEN = "https://api.electricitymap.org/v3/carbon-intensity/latest"
+ELECTRICITY_MAPS_API_URL = "https://api.electricitymap.org/v3/carbon-intensity/latest"
 AUTH_TOKEN = os.getenv("ELECTRICITYMAPS_API_TOKEN", "")
 
 # DNS updates for Route53:
@@ -87,7 +87,7 @@ def get_carbon_intensity(region_code: str) -> float:
             return float("inf")
 
         response = requests.get(
-            f"{ELECTRICITY_MAPS_API_TOKEN}?zone={region_code}",
+            f"{ELECTRICITY_MAPS_API_URL}?zone={region_code}",
             headers=headers,
             timeout=10  # Add timeout
         )
@@ -192,7 +192,7 @@ def terminate_instance(instance_id: str, region: str):
 
     if terminate_result.returncode == 0:
         print(
-            f"⏳ Terminating instance {instance_id} in {region}..."
+            f"⏳ Terminating instance '{instance_id}' in '{region}'..."
         )
         log_message(
             f"Started termination of instance '{instance_id}'...",
@@ -217,18 +217,19 @@ def terminate_instance(instance_id: str, region: str):
     wait_result = subprocess.run(
         wait_cmd, capture_output=True, text=True, check=True)
     if wait_result.returncode == 0:
-        print(f"✅ Instance {instance_id} in {region} is fully terminated.\n")
+        print(
+            f"✅ Instance '{instance_id}' in '{region}' is fully terminated.\n")
         log_message(
             f"Instance '{instance_id}' is fully terminated.\n",
             region=region
         )
     else:
         print(
-            f"❌ Wait for instance {instance_id} termination failed. "
+            f"❌ Wait for instance '{instance_id}' termination failed. "
             f"Error: {wait_result.stderr}"
         )
         log_message(
-            f"Wait for instance {instance_id} termination failed. "
+            f"Instance '{instance_id}' termination failed. "
             f"Error: {wait_result.stderr}",
             region=region, level="error"
         )
@@ -250,7 +251,8 @@ def find_old_sgs(region: str):
             cmd, capture_output=True, text=True, check=True)
         return json.loads(result.stdout)  # list of SG IDs
     except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to find old security groups in {region}. Error: {e}")
+        print(
+            f"❌ Failed to find old security groups in '{region}'. Error: {e}")
         return []
 
 
@@ -261,7 +263,7 @@ def remove_security_groups(region: str):
     # Validate region
     if region not in AWS_REGIONS:
         raise ValueError(
-            f"Invalid region: {region}. Must be one of {', '.join(AWS_REGIONS.keys())}")
+            f"Invalid region: '{region}'. Must be one of {', '.join(AWS_REGIONS.keys())}")
 
     sg_ids = find_old_sgs(region)
     for sg_id in sg_ids:
@@ -382,7 +384,7 @@ def wait_for_http_ok(ip_address: str, max_attempts=20, interval=5) -> bool:
 
     print(f"❌ Gave up waiting for a successful HTTP response from {url}.")
     log_message(
-        f"Gave up waiting for a successful HTTP response from {url}. Aborting.",
+        f"Gave up waiting for a successful HTTP response from {url}. Aborting.\n",
         region="SYSTEM",
         level="error"
     )
@@ -468,7 +470,7 @@ def cleanup_security_groups(region: str):
         print(
             f"❌ Failed to remove security groups in {region}. Error: {e}. Aborting.")
         log_message(
-            f"Failed to remove security groups in {region}. Error: {e}. Aborting.",
+            f"Failed to remove security groups in {region}. Error: {e}. Aborting.\n",
             region=region,
             level="error"
         )
@@ -487,7 +489,7 @@ def deploy_to_region(region: str, old_deployments: dict):
     if not instance_ip or not instance_id:
         print("❌ Failed to get instance details from Terraform output!")
         log_message(
-            "Failed to get instance details from Terraform output. Aborting.",
+            "Failed to get instance details from Terraform output. Aborting.\n",
             region="SYSTEM",
             level="error"
         )
@@ -507,7 +509,7 @@ def deploy_to_region(region: str, old_deployments: dict):
     if not wait_for_http_ok(instance_ip):
         print("❌ New instance failed health check!")
         log_message(
-            "New instance failed health check. Aborting.",
+            "New instance failed health check. Aborting.\n",
             region="SYSTEM",
             level="error"
         )
@@ -516,7 +518,7 @@ def deploy_to_region(region: str, old_deployments: dict):
     if not (MYAPP_DOMAIN and HOSTED_ZONE_ID):
         print("ℹ️ Skipping DNS update - domain or zone ID not configured!")
         log_message(
-            "Skipping DNS update - domain or zone ID not configured.",
+            "Skipping DNS update - domain or zone ID not configured.\n",
             region="SYSTEM"
         )
         return
@@ -538,13 +540,13 @@ def deploy_to_region(region: str, old_deployments: dict):
         cleanup_old_instances(old_deployments, region)
         print("✅ Cleanup complete. Deleted old instances and security groups.")
         print(
-            f"Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n")
+            f"ℹ️ Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n")
         log_message(
             "Cleanup complete. Successfully deleted old instances and security groups.",
             region="SYSTEM"
         )
         log_message(
-            f"ℹ️ Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n",
+            f"Application availabile at {MYAPP_DOMAIN} ({instance_ip}). Exiting.\n",
             region="SYSTEM"
         )
     else:
@@ -584,7 +586,7 @@ def handle_no_old_instances():
             print(
                 f"❌ Failed to remove security groups in {region_name}. Error: {e}. Aborting.")
             log_message(
-                f"Failed to remove security groups in {region_name}. Error: {e}. Aborting.",
+                f"Failed to remove security groups in {region_name}. Error: {e}. Aborting.\n",
                 region=region_name,
                 level="error"
             )
@@ -593,7 +595,7 @@ def handle_no_old_instances():
         print("✅ No security groups found to clean up in any region.")
         log_message(
             "No security groups found to clean up in any region. "
-            "Cleanup complete.\n", region="SYSTEM")
+            "Cleanup complete. Done.\n", region="SYSTEM")
 
 
 def deploy():
