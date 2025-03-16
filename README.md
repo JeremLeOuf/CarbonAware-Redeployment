@@ -1,16 +1,15 @@
 # Automated dynamic carbon-aware Terraform-based deployment solution
 
-This repository provides a streamlined, automated solution for deploying a Dockerized application to AWS EC2 instances using Terraform. The deployment is carbon-aware, selecting AWS regions based on their carbon intensity.
+This repository provides an **automated, carbon-aware cloud deployment framework** for deploying **Dockerized applications to AWS EC2 instances** using Terraform. The deployment prioritizes **environmental sustainability**, dynamically selecting **AWS regions based on real-time carbon intensity data**.
 
 ---
 
 ## Features
 
-- **Terraform configurations**: Automated deployment of Flask applications onto AWS EC2 instances.
-- **Carbon-aware deployment**: Python scripts interact with Electricity Maps API to identify the AWS region with the lowest carbon intensity.
-- **Dynamic updates**: Automatically updates `terraform.tfvars` to reflect region selections.
-- **Automated deployment and redeployment**: Deploy new infrastructure seamlessly or redeploy existing infrastructure based on carbon metrics.
-
+- **Terraform-based automation**: Deploys Flask applications on AWS EC2.
+- **Carbon-aware optimization**: Uses **Electricity Maps API** to select **the lowest-carbon AWS region**.
+- **Dynamic region updates**: Automatically updates **terraform.tfvars** to reflect optimal region selection.
+- **Automated deployment and redeployment**: Ensures **seamless infrastructure transitions** based on carbon data.
 ---
 
 ## Project structure
@@ -193,3 +192,7 @@ Contributions, improvements, and bug fixes are welcome. Submit pull requests or 
 ---
 
 🌱 **Deploy sustainably, automate confidently, and contribute proactively!**
+
+## License
+This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this project while providing proper attribution.
+
