@@ -1,18 +1,28 @@
 #!/bin/bash
-# This script installs Docker and deploys the latest myapp container from Docker Hub
-
-# Update package lists and install Docker
+# Update system and install Docker
 apt-get update -y
 apt-get install -y docker.io
+
+# Enable and start Docker service
 systemctl enable docker
 systemctl start docker
 
-# Ensure old container (if any) is stopped and removed
-docker stop myapp-container || true
-docker rm myapp-container || true
+# Define the Docker image name (modify as needed)
+# DOCKER_IMAGE="fanvinga/docker-2048:latest" # 2048 game
+DOCKER_IMAGE="dbafromthecold/pac-man:latest" # Pacman game
+# DOCKER_IMAGE="jeremleouf/myapp:latest" # My weather app
+# DOCKER_IMAGE="itzg/minecraft-server:latest" # Minecraft server
+# DOCKER_IMAGE="supertuxkart/stk-server" # Supertuxkart server
 
-# Ensure we pull the latest version
-docker pull jeremleouf/myapp:latest
+# Define a generic container name
+CONTAINER_NAME="app-container"
 
-# Run the container with automatic restart
-docker run -d --restart unless-stopped -p 80:8080 --name myapp-container jeremleouf/myapp:latest
+# Stop and remove any existing container
+docker stop $CONTAINER_NAME || true
+docker rm $CONTAINER_NAME || true
+
+# Pull the latest image from Docker Hub
+docker pull $DOCKER_IMAGE
+
+# Run the container on port 80
+docker run -d --restart unless-stopped -p 80:80 --name $CONTAINER_NAME $DOCKER_IMAGE
