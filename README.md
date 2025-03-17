@@ -10,11 +10,12 @@ This repository provides an **automated, carbon-aware cloud deployment framework
 - **Carbon-aware optimization**: Uses **Electricity Maps API** to select **the lowest-carbon AWS region**.
 - **Dynamic region updates**: Automatically updates **terraform.tfvars** to reflect optimal region selection.
 - **Automated deployment and redeployment**: Ensures **seamless infrastructure transitions** based on carbon data.
+
 ---
 
 ## Project structure
 
-```
+```sh
 CarbonAware-Redeployment/
 ├── terraform/
 │   ├── main.tf
@@ -194,5 +195,5 @@ Contributions, improvements, and bug fixes are welcome. Submit pull requests or 
 🌱 **Deploy sustainably, automate confidently, and contribute proactively!**
 
 ## License
-This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this project while providing proper attribution.
 
+This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this project while providing proper attribution.
