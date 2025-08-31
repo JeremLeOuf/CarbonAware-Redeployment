@@ -10,6 +10,7 @@ env/
 
 # Logs
 logs/*
+*.log
 
 # Terraform
 .terraform/
@@ -18,12 +19,62 @@ logs/*
 terraform/terraform.tfvars
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
-
+terraform/.terraform/
 
 # Environment/Sensitive
 .env
+.env.local
+.env.production
+.env.staging
+.env.development
+
+# AWS credentials and config
+.aws/
+aws-credentials.json
+aws-config.json
+
+# API keys and tokens
+api_keys.txt
+tokens.txt
+credentials.json
+
+# Instance IDs and IPs (from logs)
+instance-ids.txt
+ip-addresses.txt
+
+# DNS and domain information
+dns-records.txt
+domain-info.txt
+
+# Security groups and AWS resources
+security-groups.txt
+aws-resources.txt
 
 # OS / Editor
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+
+# Cache and temporary files
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Release packages
+*.tar.gz
+*.zip
+releases/*.tar.gz
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Trunk configuration
+.trunk/
 

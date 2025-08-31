@@ -7,7 +7,6 @@ apt-get install -y docker.io
 systemctl enable docker
 systemctl start docker
 
-# Define the Docker image name (modify as needed)
 # DOCKER_IMAGE="jeremleouf/myapp:latest" # My weather app
 DOCKER_IMAGE="fanvinga/docker-2048:latest" # 2048 game
 # DOCKER_IMAGE="dbafromthecold/pac-man:latest" # Pacman game
