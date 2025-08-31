@@ -1,199 +1,524 @@
-# Automated dynamic carbon-aware Terraform-based deployment solution
+# 🌱 CarbonAware-Redeployment
 
-This repository provides an **automated, carbon-aware cloud deployment framework** for deploying **Dockerized applications to AWS EC2 instances** using Terraform. The deployment prioritizes **environmental sustainability**, dynamically selecting **AWS regions based on real-time carbon intensity data**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Terraform 1.0+](https://img.shields.io/badge/terraform-1.0+-purple.svg)](https://www.terraform.io/)
+[![AWS](https://img.shields.io/badge/AWS-EC2-orange.svg)](https://aws.amazon.com/ec2/)
 
----
+An automated, carbon-aware cloud deployment framework that dynamically deploys Dockerized applications to AWS EC2 instances, prioritizing regions with the lowest carbon intensity for sustainable cloud computing.
 
-## Features
+## 🎯 Key Features
 
-- **Terraform-based automation**: Deploys Flask applications on AWS EC2.
-- **Carbon-aware optimization**: Uses **Electricity Maps API** to select **the lowest-carbon AWS region**.
-- **Dynamic region updates**: Automatically updates **terraform.tfvars** to reflect optimal region selection.
-- **Automated deployment and redeployment**: Ensures **seamless infrastructure transitions** based on carbon data.
+- **🌍 Carbon-Aware Optimization**: Real-time region selection based on carbon intensity data from Electricity Maps API
+- **⚡ Zero-Downtime Migrations**: Seamless infrastructure transitions between regions
+- **🔄 Automated Redeployment**: Continuous monitoring and automatic migration to greener regions
+- **🏗️ Infrastructure as Code**: Complete Terraform automation for AWS resources
+- **📊 Comprehensive Monitoring**: Built-in health checks, logging, and deployment tracking
+- **🐳 Docker Support**: Fully containerized deployment option
+- **🛡️ Production-Ready**: Error handling, rollback capabilities, and state management
 
----
+## 📋 Table of Contents
 
-## Project structure
+- [Architecture](#-architecture)
+- [Prerequisites](#-prerequisites)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Usage](#-usage)
+- [Deployment Modes](#-deployment-modes)
+- [Monitoring](#-monitoring)
+- [Release Management](#-release-management)
+- [Testing](#-testing)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-```sh
+## 🏗️ Architecture
+
+```
 CarbonAware-Redeployment/
-├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── modules/
-│   │   ├── compute/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
-│   │   └── networking/
-│   │       ├── main.tf
-│   │       └── outputs.tf
-├── scripts/
-│   └── userdata.sh
-├── redeploy_interactive.py
-├── redeploy_auto.py
-├── full_test_suite.py
-├── requirements.txt
-├── logs/
-└── README.md
+├── terraform/                    # Infrastructure as Code
+│   ├── main.tf                  # Main Terraform configuration
+│   ├── variables.tf             # Variable definitions
+│   ├── outputs.tf               # Output definitions
+│   ├── backend.tf               # State management configuration
+│   ├── modules/                 # Reusable Terraform modules
+│   │   ├── compute/            # EC2 instance management
+│   │   └── networking/         # VPC and security groups
+├── scripts/                     # Automation scripts
+│   ├── setup.sh                # One-command setup script
+│   ├── userdata.sh            # EC2 initialization script
+│   ├── create-release-package.py  # Release packaging
+│   ├── setup-terraform-backend.sh # Backend initialization
+│   └── setup-cron.sh          # Cron job configuration
+├── config/                      # Configuration management
+│   ├── environments.py         # Environment-specific configs
+│   └── .env.template          # Environment variables template
+├── utils/                       # Utility modules
+│   └── deployment_manager.py  # Deployment orchestration
+├── redeploy_interactive.py     # Interactive deployment mode
+├── redeploy_auto.py           # Automated deployment mode
+├── monitor.py                  # Standalone monitoring script
+├── full_test_suite.py         # Comprehensive testing suite
+├── requirements.txt            # Python dependencies
+├── Dockerfile                  # Container configuration
+├── Makefile                    # Simplified operations
+├── logs/                       # Deployment and monitoring logs
+└── README.md                   # This file
+
 ```
 
-*Note:* The `venv/` directory and `.env` files are intentionally excluded from version control. You should create them yourself (will be explained going forward).
+## ✅ Prerequisites
 
----
+### Required Software
 
-## Prerequisites
+| Component | Version | Installation Guide |
+|-----------|---------|-------------------|
+| **AWS CLI** | v2+ | [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
+| **Terraform** | v1.0+ | [Download Page](https://www.terraform.io/downloads) |
+| **Python** | 3.8+ | [Python.org](https://www.python.org/downloads/) |
+| **Docker** | 20.10+ (optional) | [Get Docker](https://docs.docker.com/get-docker/) |
 
-Ensure the following are installed and correctly configured on the machine you plan to run this solution on :
+### AWS Permissions
 
-- **AWS CLI (v2+)**: [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-  - Configure AWS CLI with proper permissions:
+Ensure your AWS IAM user has the following permissions:
 
-    ```bash
-    aws configure
-    ```
-  
-- **Terraform (v1.0+)**: [Terraform Downloads](https://www.terraform.io/downloads)
-  - Verify installation:
+- EC2: Full access for instance management
+- VPC: Network and security group management
+- Route53: DNS record management (if using custom domain)
+- S3: For Terraform state storage
+- DynamoDB: For state locking
 
-    ```bash
-    terraform -version
-    ```
+## 🚀 Quick Start
 
-- **Python 3.8+ and pip**:
-  - Verify installation:
-
-    ```bash
-    python3 --version
-    pip --version
-    ```
-
----
-
-## Setup instructions
-
-### 1. Clone this repository
+Get up and running in under 5 minutes:
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/JeremLeOuf/CarbonAware-Redeployment.git
 cd CarbonAware-Redeployment
+
+# 2. Run automated setup
+make setup
+
+# 3. Configure environment variables
+cp .env.template .env
+nano .env  # Add your API tokens
+
+# 4. Deploy to development
+make deploy-dev
 ```
 
-### 2. Set up a virtual environment
+## 📦 Installation
 
-Create and activate your Python virtual environment:
+### Automated Setup
+
+The easiest way to get started:
 
 ```bash
+bash scripts/setup.sh
+```
+
+This script will:
+
+- ✅ Verify all prerequisites
+- ✅ Create Python virtual environment
+- ✅ Install dependencies
+- ✅ Initialize Terraform
+- ✅ Set up configuration templates
+
+### Manual Setup
+
+For more control over the installation:
+
+```bash
+# 1. Create virtual environment
 python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Activate the virtual environment
-source venv/bin/activate        # macOS/Linux
-venv\Scripts\activate           # Windows
-
-# Install Python dependencies
+# 2. Install Python dependencies
 pip install -r requirements.txt
-```
 
-### 3. Configure environment variables
+# 3. Configure AWS CLI
+aws configure
 
-Create a `.env` file in the project root to store sensitive credentials:
+# 4. Initialize Terraform backend
+bash scripts/setup-terraform-backend.sh
 
-```bash
-touch .env
-```
-
-Populate `.env` with your details:
-
-```ini
-ELECTRICITYMAPS_API_TOKEN="YOUR_API_TOKEN"
-HOSTED_ZONE_ID="YOUR_ROUTE53_ZONE_ID"
-DOMAIN_NAME="myapp.example.com"
-DNS_TTL="60"
-```
-
-Alternatively, export these as environment variables directly.
-
-### 4. Initialize Terraform
-
-Navigate into the Terraform directory (`cd terraform/`) and initialize:
-
-```bash
+# 5. Initialize Terraform
 cd terraform
 terraform init
 cd ..
+
+# 6. Set up environment variables
+cp .env.template .env
 ```
 
-### 5. Run the test suite
+### Docker Setup
 
-Before deploying, ensure your scripts and Terraform configurations are working correctly:
+For containerized deployment:
 
 ```bash
-python3 full_test_suite.py
+# Build the Docker image
+docker build -t carbon-aware:latest .
+
+# Run with environment variables
+docker run --env-file .env carbon-aware:latest redeploy_interactive.py
 ```
 
-Verify all tests pass before proceeding to deployment.
-If some tests are failing, check the logs to investigate why.
+## ⚙️ Configuration
 
----
+### Environment Variables
 
-## Deploying the application
+Create a `.env` file with the following variables:
 
-Run the interactive deployment script to select the initial region where you want to deploy your application based on carbon intensity recommendations:
+```bash
+# API Configuration
+ELECTRICITYMAPS_API_TOKEN="your_api_token_here"
+
+# AWS Configuration (optional, can use AWS CLI defaults)
+AWS_REGION="us-east-1"
+AWS_PROFILE="default"
+
+# DNS Configuration (optional)
+HOSTED_ZONE_ID="your_route53_zone_id"
+DOMAIN_NAME="myapp.example.com"
+DNS_TTL="60"
+
+# Deployment Configuration
+DEPLOY_ENV="dev"  # dev, staging, or production
+CARBON_THRESHOLD="50"  # Maximum acceptable gCO2/kWh
+
+# Monitoring (optional)
+ALERT_EMAIL="your-email@example.com"
+SMTP_FROM="alerts@example.com"
+```
+
+### Environment-Specific Configurations
+
+Configure different settings per environment in `config/environments.py`:
+
+```python
+'production': {
+    'instance_type': 't3.medium',
+    'regions': ['us-east-1', 'eu-west-1', 'ap-southeast-1'],
+    'carbon_threshold': 50,  # gCO2/kWh
+    'health_check_timeout': 180,
+    'dns_ttl': 60
+}
+```
+
+## 🎮 Usage
+
+### Interactive Deployment
+
+For manual control over region selection:
 
 ```bash
 python3 redeploy_interactive.py
 ```
 
-- The script recommends the AWS region with the lowest carbon intensity.
-- Confirm to automatically update `terraform.tfvars` and deploy.
-- A health check verifies HTTP availability on port 80 after deployment.
+This will:
 
-### Accessing your application
+1. Fetch current carbon intensity for all configured regions
+2. Display recommendations based on carbon data
+3. Allow you to select the deployment region
+4. Deploy infrastructure and application
+5. Run health checks
 
-Obtain your new instance's public IP:
+### Automated Deployment
+
+For hands-off operation:
 
 ```bash
-terraform output -raw instance_public_ip
+python3 redeploy_auto.py
 ```
 
-Visit `http://<instance_public_ip>` in your web browser to access your Flask app.
+The system will automatically select the region with the lowest carbon intensity.
 
----
+### Using Makefile Commands
 
-## Deployment details
+```bash
+# View all available commands
+make help
 
-- Modular Terraform deployment architecture for compute and networking.
-- Automatic security group configuration for HTTP traffic.
-- Built-in cleanup of older EC2 instances and associated resources upon redeployment.
+# Validate code and configuration
+make validate
 
-## Logging
+# Run tests
+make test
 
-- All deployment processes, AWS interactions, and test outcomes are logged under the `logs` directory for debugging and monitoring.
+# Deploy to different environments
+make deploy-dev
+make deploy-staging
+make deploy-prod
 
-## Notes
+# Create release package
+make package VERSION=1.2.0
 
-- AWS credentials require permissions to manage EC2, security groups, and Route53.
-- Deployments prioritize carbon efficiency by selecting regions based on real-time carbon intensity.
-- Post-deployment health checks ensure application availability and functionality.
+# Clean temporary files
+make clean
+```
 
----
+## 🔄 Deployment Modes
 
-## Testing
+### Development Mode
 
-- Comprehensive testing via `full_test_suite.py` ensures reliability.
-- Simulates diverse deployment scenarios to pinpoint potential issues.
+- Uses `t2.micro` instances (AWS free tier eligible)
+- Limited to 2 regions for testing
+- Higher carbon threshold (100 gCO2/kWh)
+- Verbose logging enabled
 
----
+### Staging Mode
 
-## Contributing
+- Uses `t3.small` instances
+- Tests across 3 regions
+- Moderate carbon threshold (75 gCO2/kWh)
+- Standard logging
 
-Contributions, improvements, and bug fixes are welcome. Submit pull requests or raise issues to collaborate.
+### Production Mode
+
+- Uses `t3.medium` instances or higher
+- Deploys across all available regions
+- Strict carbon threshold (50 gCO2/kWh)
+- Enhanced monitoring and alerting
+
+## 📊 Monitoring
+
+### Real-Time Health Checks
+
+Monitor deployment health:
+
+```bash
+python3 monitor.py
+```
+
+Output includes:
+
+- Instance status
+- Current region
+- Carbon intensity
+- Application health
+
+### Automated Monitoring
+
+Set up continuous monitoring with cron:
+
+```bash
+bash scripts/setup-cron.sh
+```
+
+This configures:
+
+- Health checks every 5 minutes
+- Carbon intensity checks hourly
+- Daily state backups
+
+### Viewing Logs
+
+```bash
+# View latest deployment log
+tail -f logs/deployment_*.json
+
+# View monitoring history
+cat logs/monitoring.log
+
+# Parse JSON logs with jq
+cat logs/deployment_*.json | jq '.message'
+```
+
+## 📦 Release Management
+
+### Creating a Release
+
+Generate a complete release package:
+
+```bash
+python3 scripts/create-release-package.py 1.2.0
+```
+
+This creates:
+
+- Versioned release directory
+- Compressed archive (`carbon-aware-v1.2.0.tar.gz`)
+- Manifest with checksums
+- Deployment instructions
+
+### Release Contents
+
+Each release includes:
+
+- All Terraform modules
+- Python scripts and requirements
+- Configuration templates
+- Documentation
+- Deployment manifest with checksums
+
+### Deploying a Release
+
+```bash
+# Extract release
+tar -xzf carbon-aware-v1.2.0.tar.gz
+cd carbon-aware-v1.2.0
+
+# Follow included deployment steps
+cat manifest.json | jq '.deployment_steps'
+```
+
+## 🧪 Testing
+
+### Run Full Test Suite
+
+```bash
+python3 full_test_suite.py
+```
+
+Tests include:
+
+- ✅ AWS connectivity
+- ✅ Terraform validation
+- ✅ API token verification
+- ✅ Regional availability
+- ✅ Carbon data retrieval
+- ✅ Deployment simulation
+
+### Individual Test Categories
+
+```bash
+# Test AWS configuration only
+python3 -m pytest tests/test_aws.py
+
+# Test Terraform modules
+cd terraform && terraform validate
+
+# Test carbon API integration
+python3 -m pytest tests/test_carbon_api.py
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### AWS Credentials Error
+
+```bash
+# Verify AWS credentials
+aws sts get-caller-identity
+
+# Re-configure if needed
+aws configure
+```
+
+#### Terraform State Issues
+
+```bash
+# Refresh Terraform state
+cd terraform
+terraform refresh
+
+# Force unlock if locked
+terraform force-unlock <lock-id>
+```
+
+#### API Token Issues
+
+```bash
+# Test Electricity Maps API
+curl -H "auth-token: YOUR_TOKEN" \
+  "https://api.electricitymap.org/v3/carbon-intensity/latest?zone=US-CAL-CISO"
+```
+
+#### Health Check Failures
+
+```bash
+# Check instance status
+aws ec2 describe-instance-status --instance-ids <instance-id>
+
+# SSH into instance for debugging
+ssh -i your-key.pem ec2-user@<public-ip>
+```
+
+### Log Analysis
+
+Check logs for detailed error information:
+
+```bash
+# Check deployment logs
+grep ERROR logs/deployment_*.json
+
+# Check application logs on EC2
+ssh ec2-user@<instance-ip> "sudo journalctl -u carbon-aware"
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get involved:
+
+### Development Setup
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/CarbonAware-Redeployment.git
+cd CarbonAware-Redeployment
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Install in development mode
+pip install -e .
+```
+
+### Contribution Areas
+
+- 🌟 **New Features**: Multi-cloud support, advanced scheduling
+- 📚 **Documentation**: Tutorials, examples, translations
+- 🐛 **Bug Fixes**: Issue resolution and improvements
+- 🧪 **Testing**: Additional test cases and coverage
+- 🎨 **UI/UX**: Dashboard and visualization improvements
+
+### Submission Process
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit changes with descriptive messages
+4. Push to your fork
+5. Open a Pull Request
+
+## 📈 Roadmap
+
+### Current Release (v1.2.0)
+
+- ✅ Automated setup scripts
+- ✅ Environment-specific configurations
+- ✅ Docker support
+- ✅ Enhanced monitoring
+- ✅ Release packaging system
+
+### Upcoming Features (v2.0.0)
+
+- 🔄 Multi-cloud support (Azure, GCP)
+- 📊 Web dashboard for monitoring
+- 🤖 Machine learning for prediction
+- 📱 Mobile app for management
+- 🔌 Kubernetes integration
+- 🌐 Multi-region load balancing
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this project while providing proper attribution.
+
+## 🙏 Acknowledgments
+
+- [Electricity Maps](https://www.electricitymaps.com/) for carbon intensity data
+- AWS for cloud infrastructure
+- The open-source community for continuous support
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/JeremLeOuf/CarbonAware-Redeployment/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/JeremLeOuf/CarbonAware-Redeployment/discussions)
+- **Email**: Contact via GitHub profile
 
 ---
 
 🌱 **Deploy sustainably, automate confidently, and contribute proactively!**
-
-## License
-
-This project is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this project while providing proper attribution.

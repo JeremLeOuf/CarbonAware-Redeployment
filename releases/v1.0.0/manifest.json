@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "created_at": "2025-08-31T21:41:44.134379+00:00",
+  "requirements": {
+    "terraform": ">=1.0.0",
+    "python": ">=3.8",
+    "aws_cli": ">=2.0",
+    "docker": ">=20.10 (optional)"
+  },
+  "files": {
+    "config\\environments.py": {
+      "size": 2052,
+      "checksum": "4fd01a34b052d06e9f26875963273c2c562dfed7f97d9ea249f873fa3b2826df"
+    },
+    "docs\\LICENSE": {
+      "size": 1090,
+      "checksum": "0d4f2cdd3c9eade43fcd0b68abd9be903cf738269f7d449a97a97585515b41a0"
+    },
+    "docs\\README.md": {
+      "size": 5558,
+      "checksum": "34c35e1f13ff486683acbee116138e524647c97b4c4f02b824e8b3ef469c4568"
+    },
+    "scripts\\monitor.py": {
+      "size": 3564,
+      "checksum": "c6d47e3b9dabee3e2b27738d080266653fe013d65c2a0b385aaba8758ea07c92"
+    },
+    "scripts\\redeploy_auto.py": {
+      "size": 24572,
+      "checksum": "0c81c599cad279f0c9bcfc29cb4d261049c5d50be84154268d1f1fc141bf84aa"
+    },
+    "scripts\\redeploy_interactive.py": {
+      "size": 20443,
+      "checksum": "45ac67237eeeb394cb9213a37f01c4c93c4c80d5946c87a55520906ee4e2cc66"
+    },
+    "scripts\\requirements.txt": {
+      "size": 40,
+      "checksum": "0a2e8ee43e14a784b2d3d0af642c33d934c57136f2592e5f4b1844abaa37ca4e"
+    },
+    "scripts\\test_suite.py": {
+      "size": 30248,
+      "checksum": "0a12a225b9d82a6384acb1e4c7ef9b6eada6a6dbfd89a57e265da47558db19d9"
+    },
+    "terraform\\backend.tf": {
+      "size": 296,
+      "checksum": "932eecc26411a91f6e63f1b8eb343c6a3e8d9ff63d2edb69cf0932584eaffd7d"
+    },
+    "terraform\\main.tf": {
+      "size": 1092,
+      "checksum": "c44bc8848c8bd847206653809c2bc07e80760fc83ef40dd9ae6c4a5a249538a4"
+    },
+    "terraform\\outputs.tf": {
+      "size": 247,
+      "checksum": "b48ddf1c33ec0267d19f4ccf24f2a11298359da5372cdea75c3c93cb958bee51"
+    },
+    "terraform\\variables.tf": {
+      "size": 480,
+      "checksum": "e3d8e996607103b8be549ebff3aa12f82d010c859932ce13a1039767437e6a01"
+    }
+  },
+  "deployment_steps": [
+    "1. Extract package contents",
+    "2. Run setup.sh for initial configuration",
+    "3. Configure .env with your API tokens",
+    "4. Run terraform init in terraform/ directory",
+    "5. Execute python3 redeploy_interactive.py"
+  ]
+}
